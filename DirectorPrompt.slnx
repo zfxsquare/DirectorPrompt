@@ -1,3 +1,7 @@
 <Solution>
-  <Project Path="DirectorPrompt/DirectorPrompt.csproj" />
+    <Project Path="DirectorPrompt.Domain/DirectorPrompt.Domain.csproj"/>
+    <Project Path="DirectorPrompt.Agents/DirectorPrompt.Agents.csproj"/>
+    <Project Path="DirectorPrompt.Infrastructure/DirectorPrompt.Infrastructure.csproj"/>
+    <Project Path="DirectorPrompt/DirectorPrompt.csproj"/>
+    <Project Path="DirectorPrompt.Tests/DirectorPrompt.Tests.csproj"/>
 </Solution>

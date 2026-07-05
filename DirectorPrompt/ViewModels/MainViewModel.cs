@@ -166,6 +166,17 @@ public sealed partial class MainViewModel : ObservableObject
 
             var batch = new DirectiveBatch(CurrentProject.ID, items);
 
+            Log.Information
+            (
+                "用户发送指令: 项目={ProjectID} ({ProjectName}), 指令数={Count}",
+                CurrentProject.ID,
+                CurrentProject.Name,
+                items.Count
+            );
+
+            foreach (var d in items)
+                Log.Information("  指令 #{Order} [{Type}] {Content}", d.Order, d.Type, d.Content);
+
             var directorContent = string.Join("\n", items.Select(d => $"[{d.Type}] {d.Content}"));
             Dialog.AddDirectorEntry(0, directorContent);
 
@@ -189,6 +200,20 @@ public sealed partial class MainViewModel : ObservableObject
             streamingEntry.Content = result.Narrative;
             streamingEntry.Thinking = result.Thinking;
             streamingEntry.RenderMarkdown();
+
+            Log.Information
+            (
+                "指令处理完成: 轮次={RoundID}, 审计通过={Passed}, 叙事长度={NarrativeLen}",
+                result.RoundID,
+                result.AuditPassed,
+                result.Narrative.Length
+            );
+
+            if (result.Violations.Count > 0)
+            {
+                foreach (var v in result.Violations)
+                    Log.Warning("  违规: [{Severity}] {Description}", v.Severity, v.Description);
+            }
 
             await RefreshSidebarAsync();
 
@@ -226,6 +251,8 @@ public sealed partial class MainViewModel : ObservableObject
                 StatusMessage = "没有可回滚的轮次";
                 return;
             }
+
+            Log.Information("用户回滚轮次: 项目={ProjectID}, 轮次={RoundID}", CurrentProject.ID, latestRound);
 
             await orchestrator.DeleteRoundAsync(CurrentProject.ID, latestRound);
 

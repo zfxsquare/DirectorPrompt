@@ -47,6 +47,8 @@ public sealed class PostProcessingStage
             memoryAgent.ModelConfig.ModelName
         );
 
+        Log.Debug("后处理输入 (叙事文本):\n{Narrative}", context.NarrativeOutput ?? "(空)");
+
         var client      = chatClientFactory.Create(memoryAgent.ModelConfig);
         var toolContext = context.ToolContext;
 
@@ -70,6 +72,6 @@ public sealed class PostProcessingStage
 
         await client.GetResponseAsync(messages, options, cancellationToken);
 
-        Log.Information("PostProcessingStage 完成");
+        Log.Information("PostProcessingStage 完成: Memory Agent 已处理叙事文本");
     }
 }

@@ -12,6 +12,10 @@ public sealed class PipelineContext
 
     public long CurrentTimelinePosition { get; init; }
 
+    public Project? Project { get; set; }
+
+    public IReadOnlyList<ChatHistoryEntry> History { get; set; } = [];
+
     public string? KnowledgeContext { get; set; }
 
     public string? MemoryContext { get; set; }
@@ -41,3 +45,5 @@ public sealed class PipelineContext
         RoundID
     );
 }
+
+public record ChatHistoryEntry(long RoundID, string DirectorInput, string NarrativeOutput);

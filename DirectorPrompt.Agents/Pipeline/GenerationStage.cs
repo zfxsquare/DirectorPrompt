@@ -41,15 +41,29 @@ public sealed class GenerationStage
             narratorAgent.Temperature
         );
 
-        var client      = chatClientFactory.Create(narratorAgent.ModelConfig);
-        var tools       = knowledgeTools.Create(context.ToolContext);
-        var userMessage = BuildNarratorInput(context);
+        var client       = chatClientFactory.Create(narratorAgent.ModelConfig);
+        var tools        = knowledgeTools.Create(context.ToolContext);
+        var systemPrompt = BuildSystemPrompt(context);
+        var userMessage  = BuildNarratorInput(context);
+
+        Log.Information
+        (
+            "Narrator 输入:\n{Input}",
+            userMessage
+        );
 
         var messages = new List<ChatMessage>
         {
-            new(ChatRole.System, NarratorPrompt.System),
-            new(ChatRole.User, userMessage)
+            new(ChatRole.System, systemPrompt)
         };
+
+        foreach (var entry in context.History)
+        {
+            messages.Add(new ChatMessage(ChatRole.User, entry.DirectorInput));
+            messages.Add(new ChatMessage(ChatRole.Assistant, entry.NarrativeOutput));
+        }
+
+        messages.Add(new ChatMessage(ChatRole.User, userMessage));
 
         var options = new ChatOptions
         {
@@ -61,24 +75,27 @@ public sealed class GenerationStage
         var narrativeBuilder = new StringBuilder();
         var reasoningBuilder = new StringBuilder();
         var updateCount      = 0;
+        var hasFunctionCall  = false;
 
-        var updates = client.GetStreamingResponseAsync(messages, options, cancellationToken);
-
-        await foreach (var update in updates)
+        if (context.OnStreamingUpdate is not null)
         {
-            updateCount++;
+            var updates = client.GetStreamingResponseAsync(messages, options, cancellationToken);
 
-            foreach (var content in update.Contents)
+            await foreach (var update in updates)
             {
-                if (content is TextReasoningContent reasoning)
-                    reasoningBuilder.Append(reasoning.Text);
-                else if (content is TextContent text)
-                    narrativeBuilder.Append(text.Text);
-            }
+                updateCount++;
 
-            if (context.OnStreamingUpdate is not null)
-            {
-                context.OnStreamingUpdate
+                foreach (var content in update.Contents)
+                {
+                    if (content is TextReasoningContent reasoning)
+                        reasoningBuilder.Append(reasoning.Text);
+                    else if (content is TextContent text)
+                        narrativeBuilder.Append(text.Text);
+                    else if (content is FunctionCallContent)
+                        hasFunctionCall = true;
+                }
+
+                context.OnStreamingUpdate?.Invoke
                 (
                     narrativeBuilder.ToString(),
                     reasoningBuilder.ToString()
@@ -88,6 +105,35 @@ public sealed class GenerationStage
 
         var apiReasoning = reasoningBuilder.ToString();
         var rawText      = narrativeBuilder.ToString();
+
+        if (hasFunctionCall || string.IsNullOrWhiteSpace(rawText))
+        {
+            if (hasFunctionCall)
+                Log.Warning
+                (
+                    "流式响应包含工具调用, 回退到非流式以完成工具调用闭环: 流式更新数={Updates}, 流式文本长度={TextLen}",
+                    updateCount,
+                    rawText.Length
+                );
+            else
+                Log.Warning
+                (
+                    "流式响应叙事文本为空, 回退到非流式: 流式更新数={Updates}",
+                    updateCount
+                );
+
+            narrativeBuilder.Clear();
+            reasoningBuilder.Clear();
+
+            var response        = await client.GetResponseAsync(messages, options, cancellationToken);
+            var assistantMessage = response.Messages.LastOrDefault();
+
+            apiReasoning = ExtractReasoning(assistantMessage);
+            rawText      = assistantMessage?.Text ?? string.Empty;
+
+            context.OnStreamingUpdate?.Invoke(rawText, apiReasoning);
+        }
+
         var (thinking, narrative) = ThinkingParser.Merge(apiReasoning, rawText);
 
         context.NarrativeOutput = narrative;
@@ -95,14 +141,15 @@ public sealed class GenerationStage
 
         Log.Information
         (
-            "GenerationStage 完成: 流式更新数={Updates}, 叙事长度={NarrativeLen}, 思考长度={ThinkingLen}",
-            updateCount,
+            "GenerationStage 完成: 叙事长度={NarrativeLen}, 思考长度={ThinkingLen}",
             narrative.Length,
             thinking.Length
         );
 
+        Log.Information("Narrator 叙事输出:\n{Narrative}", narrative);
+
         if (!string.IsNullOrEmpty(thinking))
-            Log.Debug("Thinking 内容预览: {Preview}", thinking.Length > 200 ? thinking[..200] + "..." : thinking);
+            Log.Debug("Narrator 思考内容:\n{Thinking}", thinking);
     }
 
     public async Task RetryWithFeedbackAsync
@@ -143,13 +190,22 @@ public sealed class GenerationStage
         sb.AppendLine("## 原始输出:");
         sb.AppendLine(context.NarrativeOutput);
 
+        var systemPrompt = BuildSystemPrompt(context);
+
         var messages = new List<ChatMessage>
         {
-            new(ChatRole.System, NarratorPrompt.System),
-            new(ChatRole.User, BuildNarratorInput(context)),
-            new(ChatRole.Assistant, context.NarrativeOutput ?? string.Empty),
-            new(ChatRole.User, sb.ToString())
+            new(ChatRole.System, systemPrompt)
         };
+
+        foreach (var entry in context.History)
+        {
+            messages.Add(new ChatMessage(ChatRole.User, entry.DirectorInput));
+            messages.Add(new ChatMessage(ChatRole.Assistant, entry.NarrativeOutput));
+        }
+
+        messages.Add(new ChatMessage(ChatRole.User, BuildNarratorInput(context)));
+        messages.Add(new ChatMessage(ChatRole.Assistant, context.NarrativeOutput ?? string.Empty));
+        messages.Add(new ChatMessage(ChatRole.User, sb.ToString()));
 
         var options = new ChatOptions
         {
@@ -158,8 +214,7 @@ public sealed class GenerationStage
             Tools       = [.. tools]
         };
 
-        var response = await client.GetResponseAsync(messages, options, cancellationToken);
-
+        var response        = await client.GetResponseAsync(messages, options, cancellationToken);
         var assistantMessage = response.Messages.LastOrDefault();
 
         var apiReasoning = ExtractReasoning(assistantMessage);
@@ -175,6 +230,34 @@ public sealed class GenerationStage
             narrative.Length,
             thinking.Length
         );
+
+        Log.Information("Narrator 重试输出:\n{Narrative}", narrative);
+    }
+
+    private static string BuildSystemPrompt(PipelineContext context)
+    {
+        var sb = new StringBuilder();
+
+        sb.AppendLine(NarratorPrompt.System);
+
+        if (context.Project is not null)
+        {
+            if (!string.IsNullOrWhiteSpace(context.Project.Description))
+            {
+                sb.AppendLine();
+                sb.AppendLine("## 项目设定");
+                sb.AppendLine(context.Project.Description);
+            }
+
+            if (!string.IsNullOrWhiteSpace(context.Project.OpeningMessage))
+            {
+                sb.AppendLine();
+                sb.AppendLine("## 开场叙事");
+                sb.AppendLine(context.Project.OpeningMessage);
+            }
+        }
+
+        return sb.ToString();
     }
 
     private static string ExtractReasoning(ChatMessage? message)

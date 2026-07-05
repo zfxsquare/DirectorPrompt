@@ -65,6 +65,15 @@ public sealed class RetrievalStage
             context.MemoryContext?.Length ?? 0,
             context.SystemInjection?.Length ?? 0
         );
+
+        if (!string.IsNullOrWhiteSpace(context.KnowledgeContext))
+            Log.Debug("知识上下文内容:\n{Content}", context.KnowledgeContext);
+
+        if (!string.IsNullOrWhiteSpace(context.MemoryContext))
+            Log.Debug("记忆上下文内容:\n{Content}", context.MemoryContext);
+
+        if (!string.IsNullOrWhiteSpace(context.SystemInjection))
+            Log.Debug("系统注入内容:\n{Content}", context.SystemInjection);
     }
 
     private async Task<string> RetrieveKnowledgeAsync(PipelineContext context, CancellationToken cancellationToken)
@@ -102,6 +111,10 @@ public sealed class RetrievalStage
         var text             = assistantMessage?.Text ?? string.Empty;
 
         Log.Information("知识检索完成: 返回长度={Length}", text.Length);
+
+        if (!string.IsNullOrWhiteSpace(text))
+            Log.Debug("知识检索结果:\n{Content}", text);
+
         return text;
     }
 
@@ -140,6 +153,10 @@ public sealed class RetrievalStage
         var text             = assistantMessage?.Text ?? string.Empty;
 
         Log.Information("记忆检索完成: 返回长度={Length}", text.Length);
+
+        if (!string.IsNullOrWhiteSpace(text))
+            Log.Debug("记忆检索结果:\n{Content}", text);
+
         return text;
     }
 

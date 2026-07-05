@@ -66,10 +66,11 @@ public sealed class AuditStage
 
         Log.Information
         (
-            "AuditStage 开始: 模型={Model}, 维度数={DimensionCount}, 维度=[{Dimensions}]",
+            "AuditStage 开始: 模型={Model}, 维度数={DimensionCount}, 维度=[{Dimensions}], 叙事长度={NarrativeLen}",
             auditAgent.ModelConfig.ModelName,
             dimensions.Count,
-            string.Join(", ", dimensions)
+            string.Join(", ", dimensions),
+            context.NarrativeOutput?.Length ?? 0
         );
 
         var dimensionTasks = dimensions
@@ -113,7 +114,7 @@ public sealed class AuditStage
         CancellationToken cancellationToken
     )
     {
-        Log.Debug("审计维度 {Dimension} 开始", dimension);
+        Log.Information("审计维度 {Dimension} 开始", dimension);
 
         auditTools.Reset();
 
@@ -136,7 +137,7 @@ public sealed class AuditStage
         await client.GetResponseAsync(messages, options, cancellationToken);
 
         var violations = auditTools.Violations.Count;
-        Log.Debug("审计维度 {Dimension} 完成: 违规数={ViolationCount}", dimension, violations);
+        Log.Information("审计维度 {Dimension} 完成: 违规数={ViolationCount}", dimension, violations);
     }
 
     private (string prompt, IList<AIFunction> tools) GetDimensionConfig

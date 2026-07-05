@@ -45,18 +45,21 @@ public sealed class ProjectRepository : IProjectRepository
         var id = await connection.ExecuteScalarAsync<long>
                  (
                      """
-                     INSERT INTO projects (name, world_overview, narrative_style, permanent_constraints, created_at, updated_at)
-                     VALUES (@name, @worldOverview, @narrativeStyle, @permanentConstraints, @createdAt, @updatedAt);
+                     INSERT INTO projects (name, description, opening_message, embedding_config, audit_config, memory_config, knowledge_config, created_at, updated_at)
+                     VALUES (@name, @description, @openingMessage, @embeddingConfig, @auditConfig, @memoryConfig, @knowledgeConfig, @createdAt, @updatedAt);
                      SELECT last_insert_rowid();
                      """,
                      new
                      {
-                         name                 = project.Name,
-                         worldOverview        = project.WorldOverview,
-                         narrativeStyle       = project.NarrativeStyle,
-                         permanentConstraints = JsonHelper.Serialize(project.PermanentConstraints),
-                         createdAt            = now,
-                         updatedAt            = now
+                         name = project.Name,
+                         description = project.Description,
+                         openingMessage = project.OpeningMessage,
+                         embeddingConfig = project.EmbeddingConfig,
+                         auditConfig = project.AuditConfig,
+                         memoryConfig = project.MemoryConfig,
+                         knowledgeConfig = project.KnowledgeConfig,
+                         createdAt = now,
+                         updatedAt = now
                      }
                  );
 
@@ -72,20 +75,26 @@ public sealed class ProjectRepository : IProjectRepository
             """
             UPDATE projects
             SET name = @name,
-                world_overview = @worldOverview,
-                narrative_style = @narrativeStyle,
-                permanent_constraints = @permanentConstraints,
+                description = @description,
+                opening_message = @openingMessage,
+                embedding_config = @embeddingConfig,
+                audit_config = @auditConfig,
+                memory_config = @memoryConfig,
+                knowledge_config = @knowledgeConfig,
                 updated_at = @updatedAt
             WHERE id = @id
             """,
             new
             {
-                id                   = project.ID,
-                name                 = project.Name,
-                worldOverview        = project.WorldOverview,
-                narrativeStyle       = project.NarrativeStyle,
-                permanentConstraints = JsonHelper.Serialize(project.PermanentConstraints),
-                updatedAt            = DateTime.UtcNow.ToString("O")
+                id = project.ID,
+                name = project.Name,
+                description = project.Description,
+                openingMessage = project.OpeningMessage,
+                embeddingConfig = project.EmbeddingConfig,
+                auditConfig = project.AuditConfig,
+                memoryConfig = project.MemoryConfig,
+                knowledgeConfig = project.KnowledgeConfig,
+                updatedAt = DateTime.UtcNow.ToString("O")
             }
         );
     }
@@ -99,24 +108,39 @@ public sealed class ProjectRepository : IProjectRepository
 
     private sealed class ProjectRow
     {
-        public long   ID                    { get; set; }
-        public string Name                  { get; set; } = string.Empty;
-        public string World_Overview        { get; set; } = string.Empty;
-        public string Narrative_Style       { get; set; } = string.Empty;
-        public string Permanent_Constraints { get; set; } = "[]";
-        public string Created_At            { get; set; } = string.Empty;
-        public string Updated_At            { get; set; } = string.Empty;
+        public long ID { get; set; }
+
+        public string Name { get; set; } = string.Empty;
+
+        public string Description { get; set; } = string.Empty;
+
+        public string Opening_Message { get; set; } = string.Empty;
+
+        public string Embedding_Config { get; set; } = "{}";
+
+        public string Audit_Config { get; set; } = "{}";
+
+        public string Memory_Config { get; set; } = "{}";
+
+        public string Knowledge_Config { get; set; } = "{}";
+
+        public string Created_At { get; set; } = string.Empty;
+
+        public string Updated_At { get; set; } = string.Empty;
 
         public Project ToProject() =>
             new()
             {
-                ID                   = ID,
-                Name                 = Name,
-                WorldOverview        = World_Overview,
-                NarrativeStyle       = Narrative_Style,
-                PermanentConstraints = JsonHelper.DeserializeStringArray(Permanent_Constraints),
-                CreatedAt            = DateTime.Parse(Created_At),
-                UpdatedAt            = DateTime.Parse(Updated_At)
+                ID = ID,
+                Name = Name,
+                Description = Description,
+                OpeningMessage = Opening_Message,
+                EmbeddingConfig = Embedding_Config,
+                AuditConfig = Audit_Config,
+                MemoryConfig = Memory_Config,
+                KnowledgeConfig = Knowledge_Config,
+                CreatedAt = DateTime.Parse(Created_At),
+                UpdatedAt = DateTime.Parse(Updated_At)
             };
     }
 }

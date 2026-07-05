@@ -6,11 +6,17 @@ public record Project
 
     public string Name { get; init; } = string.Empty;
 
-    public string WorldOverview { get; init; } = string.Empty;
+    public string Description { get; init; } = string.Empty;
 
-    public string NarrativeStyle { get; init; } = string.Empty;
+    public string OpeningMessage { get; init; } = string.Empty;
 
-    public string[] PermanentConstraints { get; init; } = [];
+    public string EmbeddingConfig { get; init; } = "{}";
+
+    public string AuditConfig { get; init; } = "{}";
+
+    public string MemoryConfig { get; init; } = "{}";
+
+    public string KnowledgeConfig { get; init; } = "{}";
 
     public DateTime CreatedAt { get; init; }
 

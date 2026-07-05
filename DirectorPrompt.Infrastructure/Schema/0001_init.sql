@@ -10,24 +10,42 @@ CREATE TABLE IF NOT EXISTS projects
     TEXT
     NOT
     NULL,
-    world_overview
+    description
     TEXT
     NOT
     NULL
     DEFAULT
     '',
-    narrative_style
+    opening_message
     TEXT
     NOT
     NULL
     DEFAULT
     '',
-    permanent_constraints
+    embedding_config
     TEXT
     NOT
     NULL
     DEFAULT
-    '[]',
+    '{}',
+    audit_config
+    TEXT
+    NOT
+    NULL
+    DEFAULT
+    '{}',
+    memory_config
+    TEXT
+    NOT
+    NULL
+    DEFAULT
+    '{}',
+    knowledge_config
+    TEXT
+    NOT
+    NULL
+    DEFAULT
+    '{}',
     created_at
     TEXT
     NOT

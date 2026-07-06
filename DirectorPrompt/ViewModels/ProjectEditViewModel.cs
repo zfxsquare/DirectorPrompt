@@ -7,6 +7,7 @@ using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 using DirectorPrompt.Domain.Services;
+using DirectorPrompt.Localization;
 using Serilog;
 
 namespace DirectorPrompt.ViewModels;
@@ -55,8 +56,8 @@ public sealed partial class ProjectEditViewModel : ObservableObject
     public bool IsEditing => projectID > 0;
 
     public string TitleText => IsEditing ?
-                                   "编辑项目" :
-                                   "新建项目";
+                                   Loc.Get("Project.EditTitle") :
+                                   Loc.Get("Project.NewTitle");
 
     public bool HasValidationMessage => !string.IsNullOrEmpty(ValidationMessage);
 
@@ -261,7 +262,7 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         var ungrouped = new KnowledgeGroupEditViewModel
         {
             ID          = 0,
-            Name        = "未分组",
+            Name        = Loc.Get("Knowledge.Group.Unnamed"),
             Description = string.Empty,
             Active      = true
         };
@@ -283,7 +284,7 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         }
 
         foreach (var entry in entries.Where(e => e.GroupID is null or 0))
-            ungrouped.Entries.Add(CreateEntryVM(entry, "未分组"));
+            ungrouped.Entries.Add(CreateEntryVM(entry, Loc.Get("Knowledge.Group.Unnamed")));
 
         KnowledgeGroups.Add(ungrouped);
     }
@@ -336,7 +337,7 @@ public sealed partial class ProjectEditViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(Name))
         {
-            ValidationMessage = "项目名称不能为空";
+            ValidationMessage = Loc.Get("Project.NameRequired");
             return false;
         }
 
@@ -404,7 +405,7 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         catch (Exception ex)
         {
             Log.Error(ex, "保存项目失败");
-            ValidationMessage = $"保存失败: {ex.Message}";
+            ValidationMessage = Loc.Get("Project.SaveFailed", ex.Message);
         }
         finally
         {
@@ -417,14 +418,14 @@ public sealed partial class ProjectEditViewModel : ObservableObject
     {
         if (projectID <= 0)
         {
-            ValidationMessage = "请先保存项目基本信息";
+            ValidationMessage = Loc.Get("Project.SaveBasicInfoFirst");
             return;
         }
 
         var entry = new KnowledgeEntry
         {
             ProjectID = projectID,
-            Title     = "新知识条目",
+            Title     = Loc.Get("Knowledge.Entry.New"),
             Content   = string.Empty,
             Tags      = [],
             GroupID = group?.ID > 0 ?
@@ -443,7 +444,7 @@ public sealed partial class ProjectEditViewModel : ObservableObject
             Tags         = string.Empty,
             GroupID      = created.GroupID,
             Active       = true,
-            GroupDisplay = group?.Name ?? "未分组",
+            GroupDisplay = group?.Name ?? Loc.Get("Knowledge.Group.Unnamed"),
             IsEditing    = true
         };
 
@@ -481,7 +482,7 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         catch (Exception ex)
         {
             Log.Error(ex, "保存知识条目失败");
-            ValidationMessage = $"保存知识条目失败: {ex.Message}";
+            ValidationMessage = Loc.Get("Knowledge.Entry.SaveFailed", ex.Message);
         }
     }
 
@@ -502,7 +503,7 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         catch (Exception ex)
         {
             Log.Error(ex, "删除知识条目失败");
-            ValidationMessage = $"删除失败: {ex.Message}";
+            ValidationMessage = Loc.Get("Common.DeleteFailed", ex.Message);
         }
     }
 
@@ -525,14 +526,14 @@ public sealed partial class ProjectEditViewModel : ObservableObject
     {
         if (projectID <= 0)
         {
-            ValidationMessage = "请先保存项目基本信息";
+            ValidationMessage = Loc.Get("Project.SaveBasicInfoFirst");
             return;
         }
 
         var group = new KnowledgeGroup
         {
             ProjectID   = projectID,
-            Name        = "新分组",
+            Name        = Loc.Get("Knowledge.Group.New"),
             Description = string.Empty,
             Active      = true
         };
@@ -573,7 +574,7 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         catch (Exception ex)
         {
             Log.Error(ex, "保存知识分组失败");
-            ValidationMessage = $"保存分组失败: {ex.Message}";
+            ValidationMessage = Loc.Get("Knowledge.Group.SaveFailed", ex.Message);
         }
     }
 
@@ -591,7 +592,7 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         catch (Exception ex)
         {
             Log.Error(ex, "删除知识分组失败");
-            ValidationMessage = $"删除分组失败: {ex.Message}";
+            ValidationMessage = Loc.Get("Knowledge.Group.DeleteFailed", ex.Message);
         }
     }
 
@@ -600,7 +601,7 @@ public sealed partial class ProjectEditViewModel : ObservableObject
     {
         if (projectID <= 0)
         {
-            ValidationMessage = "请先保存项目基本信息";
+            ValidationMessage = Loc.Get("Project.SaveBasicInfoFirst");
             return;
         }
 
@@ -608,7 +609,7 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         {
             ProjectID   = projectID,
             Name        = "new_attribute",
-            DisplayName = "新状态属性",
+            DisplayName = Loc.Get("State.Attribute.New"),
             Scope       = StateScope.Global,
             ValueType   = StateValueType.Numeric,
             Driver      = Driver.Narrative,
@@ -649,12 +650,12 @@ public sealed partial class ProjectEditViewModel : ObservableObject
             };
 
             await stateRepository.UpdateAttributeAsync(model);
-            ValidationMessage   = string.Empty;
+            ValidationMessage = string.Empty;
         }
         catch (Exception ex)
         {
             Log.Error(ex, "保存状态属性失败");
-            ValidationMessage = $"保存状态属性失败: {ex.Message}";
+            ValidationMessage = Loc.Get("State.Attribute.SaveFailed", ex.Message);
         }
     }
 
@@ -675,7 +676,7 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         catch (Exception ex)
         {
             Log.Error(ex, "删除状态属性失败");
-            ValidationMessage = $"删除失败: {ex.Message}";
+            ValidationMessage = Loc.Get("Common.DeleteFailed", ex.Message);
         }
     }
 
@@ -684,7 +685,7 @@ public sealed partial class ProjectEditViewModel : ObservableObject
     {
         if (projectID <= 0)
         {
-            ValidationMessage = "请先保存项目基本信息";
+            ValidationMessage = Loc.Get("Project.SaveBasicInfoFirst");
             return;
         }
 
@@ -713,7 +714,7 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         catch (Exception ex)
         {
             Log.Error(ex, "删除标记失败");
-            ValidationMessage = $"删除标记失败: {ex.Message}";
+            ValidationMessage = Loc.Get("State.Flag.DeleteFailed", ex.Message);
         }
     }
 
@@ -722,19 +723,19 @@ public sealed partial class ProjectEditViewModel : ObservableObject
     {
         Embedding.IsTestingConnection = true;
         Embedding.ConnectionSuccess   = null;
-        Embedding.ConnectionMessage   = "正在测试连接…";
+        Embedding.ConnectionMessage   = Loc.Get("Settings.TestingConnection");
 
         try
         {
             await connectionTester.TestEmbeddingAsync(Embedding.Provider, Embedding.Endpoint, Embedding.APIKey, Embedding.ModelName);
 
             Embedding.ConnectionSuccess = true;
-            Embedding.ConnectionMessage = $"连接成功, 模型: {Embedding.ModelName}";
+            Embedding.ConnectionMessage = Loc.Get("Settings.ConnectionSuccess", Embedding.ModelName);
         }
         catch (Exception ex)
         {
             Embedding.ConnectionSuccess = false;
-            Embedding.ConnectionMessage = $"连接失败: {ex.Message}";
+            Embedding.ConnectionMessage = Loc.Get("Settings.ConnectionFailed", ex.Message);
         }
         finally
         {

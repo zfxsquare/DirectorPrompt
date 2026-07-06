@@ -160,9 +160,9 @@ public sealed class Orchestrator
         foreach (var d in batch.Directives)
             Log.Information("  指令 #{Order} [{Type}] {Content}", d.Order, d.Type, d.Content);
 
-        onStageUpdate?.Invoke(new PipelineStageUpdate("指令处理", "进行中"));
+        onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.DirectiveProcessing, PipelineStageStatus.Running));
         await ProcessDirectivesAsync(batch, sessionID, activeScene, cancellationToken);
-        onStageUpdate?.Invoke(new PipelineStageUpdate("指令处理", "完成"));
+        onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.DirectiveProcessing, PipelineStageStatus.Complete));
 
         var history = await BuildHistoryAsync(sessionID, roundID, cancellationToken);
 
@@ -181,26 +181,26 @@ public sealed class Orchestrator
             OnStageUpdate           = onStageUpdate
         };
 
-        onStageUpdate?.Invoke(new PipelineStageUpdate("检索", "进行中"));
+        onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.Retrieval, PipelineStageStatus.Running));
         await retrievalStage.ExecuteAsync(context, cancellationToken);
         onStageUpdate?.Invoke
         (
             new PipelineStageUpdate
             (
-                "检索",
-                "完成",
+                PipelineStageKind.Retrieval,
+                PipelineStageStatus.Complete,
                 $"知识长度={context.KnowledgeContext?.Length ?? 0}, 记忆长度={context.MemoryContext?.Length ?? 0}"
             )
         );
 
-        onStageUpdate?.Invoke(new PipelineStageUpdate("生成", "进行中"));
+        onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.Generation, PipelineStageStatus.Running));
         await generationStage.ExecuteAsync(context, cancellationToken);
         onStageUpdate?.Invoke
         (
             new PipelineStageUpdate
             (
-                "生成",
-                "完成",
+                PipelineStageKind.Generation,
+                PipelineStageStatus.Complete,
                 $"叙事长度={context.NarrativeOutput?.Length ?? 0}"
             )
         );
@@ -245,14 +245,14 @@ public sealed class Orchestrator
             cancellationToken
         );
 
-        onStageUpdate?.Invoke(new PipelineStageUpdate("审计", "进行中"));
+        onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.Audit, PipelineStageStatus.Running));
         await RunAuditLoopAsync(context, cancellationToken);
         onStageUpdate?.Invoke
         (
             new PipelineStageUpdate
             (
-                "审计",
-                "完成",
+                PipelineStageKind.Audit,
+                PipelineStageStatus.Complete,
                 context.AuditPassed ?
                     "通过" :
                     $"违规数={context.Violations.Count}"
@@ -261,9 +261,9 @@ public sealed class Orchestrator
 
         if (context.AuditPassed)
         {
-            onStageUpdate?.Invoke(new PipelineStageUpdate("后处理", "进行中"));
+            onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.PostProcessing, PipelineStageStatus.Running));
             await postProcessingStage.ExecuteAsync(context, cancellationToken);
-            onStageUpdate?.Invoke(new PipelineStageUpdate("后处理", "完成"));
+            onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.PostProcessing, PipelineStageStatus.Complete));
         }
 
         await directiveRepository.DecrementTTLAsync(sessionID, cancellationToken);

@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using DirectorPrompt.Localization;
 
 namespace DirectorPrompt.ViewModels;
 
@@ -18,7 +19,7 @@ public sealed partial class StateItemViewModel : ObservableObject
 public sealed partial class StatePanelViewModel : ObservableObject
 {
     [ObservableProperty]
-    private string currentSceneLabel = "未开始";
+    private string currentSceneLabel = Loc.Get("State.Panel.NotStarted");
 
     [ObservableProperty]
     private string timelineLabel = "—";
@@ -28,7 +29,7 @@ public sealed partial class StatePanelViewModel : ObservableObject
     public void Clear()
     {
         StateItems.Clear();
-        CurrentSceneLabel = "未开始";
+        CurrentSceneLabel = Loc.Get("State.Panel.NotStarted");
         TimelineLabel     = "—";
     }
 }

@@ -7,6 +7,7 @@ using DirectorPrompt.Agents;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
+using DirectorPrompt.Localization;
 using DirectorPrompt.Views;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
@@ -34,7 +35,7 @@ public sealed partial class MainViewModel : ObservableObject
     private Session? currentSession;
 
     [ObservableProperty]
-    private string statusMessage = "就绪";
+    private string statusMessage = Loc.Get("Status.Ready");
 
     [ObservableProperty]
     private bool isProcessing;
@@ -107,7 +108,7 @@ public sealed partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             Log.Error(ex, "加载项目列表失败");
-            StatusMessage = $"加载失败: {ex.Message}";
+            StatusMessage = Loc.Get("Status.LoadFailed", ex.Message);
         }
     }
 
@@ -138,7 +139,7 @@ public sealed partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             Log.Error(ex, "加载对话列表失败");
-            StatusMessage = $"加载失败: {ex.Message}";
+            StatusMessage = Loc.Get("Status.LoadFailed", ex.Message);
         }
     }
 
@@ -173,7 +174,7 @@ public sealed partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             Log.Error(ex, "创建对话失败");
-            StatusMessage = $"创建对话失败: {ex.Message}";
+            StatusMessage = Loc.Get("Status.CreateSessionFailed", ex.Message);
         }
     }
 
@@ -214,9 +215,9 @@ public sealed partial class MainViewModel : ObservableObject
     private void ResetPipelineStages() =>
         PipelineStages.Clear();
 
-    private void UpdatePipelineStage(string stage, string status, string? detail = null)
+    private void UpdatePipelineStage(PipelineStageKind stage, PipelineStageStatus status, string? detail = null)
     {
-        var existing = PipelineStages.FirstOrDefault(s => s.Stage == stage);
+        var existing = PipelineStages.FirstOrDefault(s => s.Kind == stage);
 
         if (existing is not null)
         {
@@ -224,7 +225,7 @@ public sealed partial class MainViewModel : ObservableObject
             existing.Detail = detail;
         }
         else
-            PipelineStages.Add(new PipelineStageViewModel { Stage = stage, Status = status, Detail = detail });
+            PipelineStages.Add(new PipelineStageViewModel { Kind = stage, Status = status, Detail = detail });
     }
 
     [RelayCommand]
@@ -232,24 +233,24 @@ public sealed partial class MainViewModel : ObservableObject
     {
         if (CurrentProject is null)
         {
-            StatusMessage = "请先选择或创建项目";
+            StatusMessage = Loc.Get("Status.SelectProjectFirst");
             return;
         }
 
         if (CurrentSession is null)
         {
-            StatusMessage = "请先选择或创建对话";
+            StatusMessage = Loc.Get("Status.SelectSessionFirst");
             return;
         }
 
         if (DirectiveInput.Directives.Count == 0)
         {
-            StatusMessage = "请至少添加一条指令";
+            StatusMessage = Loc.Get("Status.AddAtLeastOneDirective");
             return;
         }
 
         IsProcessing  = true;
-        StatusMessage = "处理中…";
+        StatusMessage = Loc.Get("Status.Processing");
         ResetPipelineStages();
 
         try
@@ -310,13 +311,13 @@ public sealed partial class MainViewModel : ObservableObject
 
             DirectiveInput.Clear();
             StatusMessage = result.AuditPassed ?
-                                "完成" :
-                                $"完成 (审计警告: {result.Violations.Count} 条)";
+                                Loc.Get("Status.Complete") :
+                                Loc.Get("Status.CompleteWithWarnings", result.Violations.Count);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "处理指令失败");
-            StatusMessage = $"处理失败: {ex.Message}";
+            StatusMessage = Loc.Get("Status.ProcessFailed", ex.Message);
         }
         finally
         {
@@ -331,7 +332,7 @@ public sealed partial class MainViewModel : ObservableObject
             return;
 
         IsProcessing  = true;
-        StatusMessage = "回滚中…";
+        StatusMessage = Loc.Get("Status.RollingBack");
 
         try
         {
@@ -339,7 +340,7 @@ public sealed partial class MainViewModel : ObservableObject
 
             if (latestRound <= 0)
             {
-                StatusMessage = "没有可回滚的轮次";
+                StatusMessage = Loc.Get("Status.NoRoundToRollback");
                 return;
             }
 
@@ -350,12 +351,12 @@ public sealed partial class MainViewModel : ObservableObject
             Dialog.RemoveEntriesByRound(latestRound);
 
             await RefreshSidebarAsync();
-            StatusMessage = "已回滚";
+            StatusMessage = Loc.Get("Status.RolledBack");
         }
         catch (Exception ex)
         {
             Log.Error(ex, "回滚失败");
-            StatusMessage = $"回滚失败: {ex.Message}";
+            StatusMessage = Loc.Get("Status.RollbackFailed", ex.Message);
         }
         finally
         {
@@ -370,7 +371,7 @@ public sealed partial class MainViewModel : ObservableObject
             return;
 
         IsProcessing  = true;
-        StatusMessage = "重写中…";
+        StatusMessage = Loc.Get("Status.Rewriting");
 
         try
         {
@@ -378,7 +379,7 @@ public sealed partial class MainViewModel : ObservableObject
 
             if (latestRound <= 0)
             {
-                StatusMessage = "没有可重写的轮次";
+                StatusMessage = Loc.Get("Status.NoRoundToRewrite");
                 return;
             }
 
@@ -387,16 +388,16 @@ public sealed partial class MainViewModel : ObservableObject
 
             if (directorEvent is null)
             {
-                StatusMessage = "找不到原始指令";
+                StatusMessage = Loc.Get("Status.OriginalDirectiveNotFound");
                 return;
             }
 
-            StatusMessage = "重写功能需要原始指令批次, 请重新输入指令后发送";
+            StatusMessage = Loc.Get("Status.RewriteNeedReinput");
         }
         catch (Exception ex)
         {
             Log.Error(ex, "重写失败");
-            StatusMessage = $"重写失败: {ex.Message}";
+            StatusMessage = Loc.Get("Status.RewriteFailed", ex.Message);
         }
         finally
         {
@@ -518,8 +519,8 @@ public sealed partial class MainViewModel : ObservableObject
                     Content = d.Content,
                     HasTTL  = d.TTL.HasValue,
                     TtlLabel = d.TTL.HasValue ?
-                                   $"剩余 {d.TTL} 轮" :
-                                   "永久"
+                                   Loc.Get("Directive.Panel.RemainingRounds", d.TTL) :
+                                   Loc.Get("Directive.Panel.Permanent")
                 }
             );
         }
@@ -551,12 +552,25 @@ public sealed partial class MainViewModel : ObservableObject
 
 public sealed class PipelineStageViewModel : INotifyPropertyChanged
 {
-    private string  status = string.Empty;
-    private string? detail;
+    private PipelineStageStatus status;
+    private string?             detail;
 
-    public string Stage { get; init; } = string.Empty;
+    public PipelineStageKind Kind { get; init; }
 
-    public string Status
+    public string Stage => Loc.Get
+    (
+        Kind switch
+        {
+            PipelineStageKind.DirectiveProcessing => "Pipeline.Stage.DirectiveProcessing",
+            PipelineStageKind.Retrieval           => "Pipeline.Stage.Retrieval",
+            PipelineStageKind.Generation          => "Pipeline.Stage.Generation",
+            PipelineStageKind.Audit               => "Pipeline.Stage.Audit",
+            PipelineStageKind.PostProcessing      => "Pipeline.Stage.PostProcessing",
+            _                                     => Kind.ToString()
+        }
+    );
+
+    public PipelineStageStatus Status
     {
         get => status;
         set
@@ -565,9 +579,20 @@ public sealed class PipelineStageViewModel : INotifyPropertyChanged
             {
                 status = value;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Status)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StatusText)));
             }
         }
     }
+
+    public string StatusText => Loc.Get
+    (
+        status switch
+        {
+            PipelineStageStatus.Running  => "Pipeline.Status.Running",
+            PipelineStageStatus.Complete => "Pipeline.Status.Complete",
+            _                            => status.ToString()
+        }
+    );
 
     public string? Detail
     {

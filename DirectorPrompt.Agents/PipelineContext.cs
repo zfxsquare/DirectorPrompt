@@ -1,3 +1,4 @@
+using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 
 namespace DirectorPrompt.Agents;
@@ -57,7 +58,7 @@ public record ChatHistoryEntry
 
 public record PipelineStageUpdate
 (
-    string  Stage,
-    string  Status,
-    string? Detail = null
+    PipelineStageKind   Stage,
+    PipelineStageStatus Status,
+    string?             Detail = null
 );

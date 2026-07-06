@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Services;
+using DirectorPrompt.Localization;
 using Microsoft.Extensions.Configuration;
 using Serilog;
 
@@ -88,12 +89,12 @@ public sealed partial class SettingsViewModel : ObservableObject
 
             await File.WriteAllTextAsync(path, json);
 
-            ValidationMessage = "设置已保存, 部分配置需要重启应用后生效";
+            ValidationMessage = Loc.Get("Settings.Saved");
         }
         catch (Exception ex)
         {
             Log.Error(ex, "保存设置失败");
-            ValidationMessage = $"保存失败: {ex.Message}";
+            ValidationMessage = Loc.Get("Settings.SaveFailed", ex.Message);
         }
         finally
         {
@@ -206,19 +207,19 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         agent.IsTestingConnection = true;
         agent.ConnectionSuccess   = null;
-        agent.ConnectionMessage   = "正在测试连接…";
+        agent.ConnectionMessage   = Loc.Get("Settings.TestingConnection");
 
         try
         {
             await connectionTester.TestChatAsync(agent.Provider, agent.Endpoint, agent.APIKey, agent.ModelName);
 
             agent.ConnectionSuccess = true;
-            agent.ConnectionMessage = $"连接成功, 模型: {agent.ModelName}";
+            agent.ConnectionMessage = Loc.Get("Settings.ConnectionSuccess", agent.ModelName);
         }
         catch (Exception ex)
         {
             agent.ConnectionSuccess = false;
-            agent.ConnectionMessage = $"连接失败: {ex.Message}";
+            agent.ConnectionMessage = Loc.Get("Settings.ConnectionFailed", ex.Message);
         }
         finally
         {

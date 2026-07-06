@@ -6,6 +6,7 @@
                  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
                  xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
                  xmlns:converters="clr-namespace:DirectorPrompt.Converters"
+                 xmlns:loc="clr-namespace:DirectorPrompt.Localization"
                  mc:Ignorable="d"
                  d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
                  Title="DirectorPrompt"
@@ -50,7 +51,7 @@
                 </Grid.ColumnDefinitions>
 
                 <TextBlock Grid.Column="0"
-                           Text="项目"
+                           Text="{Binding [Navigation.Project], Source={x:Static loc:Loc.Instance}}"
                            VerticalAlignment="Center"
                            Margin="0,0,8,0" />
                 <ComboBox Grid.Column="1"
@@ -59,7 +60,7 @@
                           DisplayMemberPath="Name"
                           SelectedItem="{Binding CurrentProject}" />
                 <TextBlock Grid.Column="2"
-                           Text="对话"
+                           Text="{Binding [Navigation.Session], Source={x:Static loc:Loc.Instance}}"
                            VerticalAlignment="Center"
                            Margin="0,0,8,0" />
                 <ComboBox Grid.Column="3"
@@ -69,7 +70,7 @@
                           SelectedItem="{Binding CurrentSession}"
                           IsEnabled="{Binding IsProjectSelected}" />
                 <ui:Button Grid.Column="4"
-                           Content="新对话"
+                           Content="{Binding [Navigation.NewSession], Source={x:Static loc:Loc.Instance}}"
                            Icon="Add24"
                            Appearance="Secondary"
                            Margin="0,0,4,0"
@@ -77,14 +78,14 @@
                            Command="{Binding NewSessionCommand}"
                            IsEnabled="{Binding IsProjectSelected}" />
                 <ui:Button Grid.Column="5"
-                           Content="新建项目"
+                           Content="{Binding [Navigation.NewProject], Source={x:Static loc:Loc.Instance}}"
                            Icon="Add24"
                            Appearance="Secondary"
                            Margin="0,0,4,0"
                            Padding="12,6"
                            Command="{Binding NewProjectCommand}" />
                 <ui:Button Grid.Column="6"
-                           Content="编辑项目"
+                           Content="{Binding [Navigation.EditProject], Source={x:Static loc:Loc.Instance}}"
                            Icon="Edit24"
                            Appearance="Secondary"
                            Margin="0,0,4,0"
@@ -93,7 +94,7 @@
                            IsEnabled="{Binding IsProjectSelected}"
                            HorizontalAlignment="Left" />
                 <ui:Button Grid.Column="7"
-                           Content="设置"
+                           Content="{Binding [Navigation.Settings], Source={x:Static loc:Loc.Instance}}"
                            Icon="Settings24"
                            Appearance="Secondary"
                            Padding="12,6"
@@ -137,11 +138,11 @@
                                                 Value="{DynamicResource ControlElevationBorderBrush}" />
                                         <Setter Property="BorderThickness" Value="1" />
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Status}" Value="进行中">
+                                            <DataTrigger Binding="{Binding Status}" Value="Running">
                                                 <Setter Property="Background"
                                                         Value="{DynamicResource AccentFillColorDefaultBrush}" />
                                             </DataTrigger>
-                                            <DataTrigger Binding="{Binding Status}" Value="完成">
+                                            <DataTrigger Binding="{Binding Status}" Value="Complete">
                                                 <Setter Property="Opacity" Value="0.6" />
                                             </DataTrigger>
                                         </Style.Triggers>
@@ -152,7 +153,7 @@
                                                FontWeight="SemiBold"
                                                FontSize="12"
                                                VerticalAlignment="Center" />
-                                    <TextBlock Text="{Binding Status}"
+                                    <TextBlock Text="{Binding StatusText}"
                                                FontSize="11"
                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                                Margin="6,0,0,0"
@@ -218,22 +219,25 @@
                                                        Visibility="{Binding IsLast, Converter={StaticResource BoolToVisibility}}">
                                                 <ui:Button.ContextMenu>
                                                     <ContextMenu>
-                                                        <MenuItem Header="重写"
-                                                                  Click="OnRewriteRound"
-                                                                  Tag="{Binding}" />
-                                                        <MenuItem Header="删除此轮"
-                                                                  Click="OnDeleteRound"
-                                                                  Tag="{Binding}" />
+                                                        <MenuItem
+                                                            Header="{Binding [Dialog.Rewrite], Source={x:Static loc:Loc.Instance}}"
+                                                            Click="OnRewriteRound"
+                                                            Tag="{Binding}" />
+                                                        <MenuItem
+                                                            Header="{Binding [Dialog.DeleteRound], Source={x:Static loc:Loc.Instance}}"
+                                                            Click="OnDeleteRound"
+                                                            Tag="{Binding}" />
                                                     </ContextMenu>
                                                 </ui:Button.ContextMenu>
                                             </ui:Button>
                                         </Grid>
 
-                                        <Expander Header="思考过程"
-                                                  Margin="0,4,0,0"
-                                                  FontSize="12"
-                                                  Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                  Visibility="{Binding HasThinking, Converter={StaticResource BoolToVisibility}}">
+                                        <Expander
+                                            Header="{Binding [Dialog.ThinkingProcess], Source={x:Static loc:Loc.Instance}}"
+                                            Margin="0,4,0,0"
+                                            FontSize="12"
+                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                            Visibility="{Binding HasThinking, Converter={StaticResource BoolToVisibility}}">
                                             <TextBlock Text="{Binding Thinking}"
                                                        TextWrapping="Wrap"
                                                        FontSize="12"
@@ -344,24 +348,28 @@
                                       Margin="0,0,4,0"
                                       SelectedIndex="0"
                                       SelectionChanged="OnDirectiveTypeChanged">
-                                <ComboBoxItem Content="剧情" />
-                                <ComboBoxItem Content="基调" />
-                                <ComboBoxItem Content="临时约束" />
-                                <ComboBoxItem Content="时间/场景变更" />
+                                <ComboBoxItem
+                                    Content="{Binding [Directive.Type.Plot], Source={x:Static loc:Loc.Instance}}" />
+                                <ComboBoxItem
+                                    Content="{Binding [Directive.Type.Tone], Source={x:Static loc:Loc.Instance}}" />
+                                <ComboBoxItem
+                                    Content="{Binding [Directive.Type.TemporaryConstraint], Source={x:Static loc:Loc.Instance}}" />
+                                <ComboBoxItem
+                                    Content="{Binding [Directive.Type.SceneChange], Source={x:Static loc:Loc.Instance}}" />
                             </ComboBox>
                             <ui:TextBox Grid.Column="1"
                                         Margin="4,0"
-                                        PlaceholderText="输入指令内容…"
+                                        PlaceholderText="{Binding [Dialog.InputPlaceholder], Source={x:Static loc:Loc.Instance}}"
                                         Text="{Binding DirectiveInput.InputContent, UpdateSourceTrigger=PropertyChanged}"
                                         KeyDown="OnInputKeyDown" />
                             <ui:Button Grid.Column="2"
-                                       Content="添加"
+                                       Content="{Binding [Dialog.AddDirective], Source={x:Static loc:Loc.Instance}}"
                                        Icon="Add24"
                                        Margin="4,0"
                                        Padding="12,6"
                                        Command="{Binding DirectiveInput.AddDirectiveCommand}" />
                             <ui:Button Grid.Column="3"
-                                       Content="发送"
+                                       Content="{Binding [Dialog.SendDirective], Source={x:Static loc:Loc.Instance}}"
                                        Icon="Send24"
                                        Appearance="Primary"
                                        Margin="4,0,0,0"
@@ -383,7 +391,7 @@
                           VerticalScrollBarVisibility="Auto"
                           Padding="8,8,8,8">
                 <StackPanel>
-                    <ui:CardExpander Header="状态栏"
+                    <ui:CardExpander Header="{Binding [State.Panel.Title], Source={x:Static loc:Loc.Instance}}"
                                      IsExpanded="True"
                                      Margin="0,0,0,8">
                         <StackPanel>
@@ -392,7 +400,9 @@
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="场景" Foreground="Gray" Margin="0,0,8,0" />
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding [State.Panel.Scene], Source={x:Static loc:Loc.Instance}}"
+                                           Foreground="Gray" Margin="0,0,8,0" />
                                 <TextBlock Grid.Column="1" Text="{Binding StatePanel.CurrentSceneLabel}" />
                             </Grid>
                             <Grid Margin="0,2">
@@ -400,7 +410,9 @@
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="时间线" Foreground="Gray" Margin="0,0,8,0" />
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding [State.Panel.Timeline], Source={x:Static loc:Loc.Instance}}"
+                                           Foreground="Gray" Margin="0,0,8,0" />
                                 <TextBlock Grid.Column="1" Text="{Binding StatePanel.TimelineLabel}" />
                             </Grid>
                             <ItemsControl ItemsSource="{Binding StatePanel.StateItems}" Margin="0,4,0,0">
@@ -422,7 +434,7 @@
                         </StackPanel>
                     </ui:CardExpander>
 
-                    <ui:CardExpander Header="生效指令"
+                    <ui:CardExpander Header="{Binding [Directive.Panel.Title], Source={x:Static loc:Loc.Instance}}"
                                      IsExpanded="True"
                                      Margin="0,0,0,8">
                         <ItemsControl ItemsSource="{Binding DirectivesPanel.Directives}">
@@ -448,7 +460,7 @@
                         </ItemsControl>
                     </ui:CardExpander>
 
-                    <ui:CardExpander Header="人物列表"
+                    <ui:CardExpander Header="{Binding [Character.Panel.Title], Source={x:Static loc:Loc.Instance}}"
                                      IsExpanded="True"
                                      Margin="0,0,0,8">
                         <ItemsControl ItemsSource="{Binding CharacterPanel.Characters}">

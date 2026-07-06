@@ -7,9 +7,10 @@
                  xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
                  xmlns:converters="clr-namespace:DirectorPrompt.Converters"
                  xmlns:enums="clr-namespace:DirectorPrompt.Domain.Enums;assembly=DirectorPrompt.Domain"
+                 xmlns:loc="clr-namespace:DirectorPrompt.Localization"
                  mc:Ignorable="d"
                  d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}"
-                 Title="全局设置"
+                 Title="{Binding [Settings.Title], Source={x:Static loc:Loc.Instance}}"
                  Width="760"
                  Height="600"
                  MinWidth="600"
@@ -33,7 +34,7 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <ui:TitleBar Grid.Row="0" Title="全局设置" />
+        <ui:TitleBar Grid.Row="0" Title="{Binding [Settings.Title], Source={x:Static loc:Loc.Instance}}" />
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
@@ -51,13 +52,15 @@
                 <ListViewItem Tag="database" Padding="12,10">
                     <StackPanel Orientation="Horizontal">
                         <ui:SymbolIcon Symbol="Database24" Margin="0,0,12,0" />
-                        <TextBlock Text="数据库" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding [Settings.Database.Title], Source={x:Static loc:Loc.Instance}}"
+                                   VerticalAlignment="Center" />
                     </StackPanel>
                 </ListViewItem>
                 <ListViewItem Tag="agents" Padding="12,10">
                     <StackPanel Orientation="Horizontal">
                         <ui:SymbolIcon Symbol="Bot24" Margin="0,0,12,0" />
-                        <TextBlock Text="Agent 配置" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding [Settings.Agent.Title], Source={x:Static loc:Loc.Instance}}"
+                                   VerticalAlignment="Center" />
                     </StackPanel>
                 </ListViewItem>
             </ListView>
@@ -69,7 +72,7 @@
                               Padding="24,12,24,16">
                     <Grid>
                         <StackPanel x:Name="DatabasePanel" Visibility="Visible">
-                            <TextBlock Text="数据库"
+                            <TextBlock Text="{Binding [Settings.Database.Title], Source={x:Static loc:Loc.Instance}}"
                                        FontSize="20"
                                        FontWeight="SemiBold"
                                        Margin="0,0,0,16" />
@@ -79,7 +82,7 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0"
-                                           Text="数据库路径"
+                                           Text="{Binding [Settings.Database.Path], Source={x:Static loc:Loc.Instance}}"
                                            VerticalAlignment="Center" />
                                 <ui:TextBox Grid.Column="1"
                                             Text="{Binding DatabasePath, UpdateSourceTrigger=PropertyChanged}" />
@@ -90,7 +93,7 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0"
-                                           Text="快照间隔"
+                                           Text="{Binding [Settings.Database.SnapshotInterval], Source={x:Static loc:Loc.Instance}}"
                                            VerticalAlignment="Center" />
                                 <ui:NumberBox Grid.Column="1"
                                               Value="{Binding SnapshotInterval, UpdateSourceTrigger=PropertyChanged}"
@@ -100,14 +103,15 @@
                         </StackPanel>
 
                         <StackPanel x:Name="AgentsPanel" Visibility="Collapsed">
-                            <TextBlock Text="Agent 配置"
+                            <TextBlock Text="{Binding [Settings.Agent.Title], Source={x:Static loc:Loc.Instance}}"
                                        FontSize="20"
                                        FontWeight="SemiBold"
                                        Margin="0,0,0,4" />
-                            <TextBlock Text="每个 Agent 可独立配置模型和温度"
-                                       FontSize="12"
-                                       Foreground="Gray"
-                                       Margin="0,0,0,16" />
+                            <TextBlock
+                                Text="{Binding [Settings.Agent.Description], Source={x:Static loc:Loc.Instance}}"
+                                FontSize="12"
+                                Foreground="Gray"
+                                Margin="0,0,0,16" />
 
                             <ItemsControl ItemsSource="{Binding Agents}">
                                 <ItemsControl.ItemTemplate>
@@ -137,11 +141,15 @@
                                                         <ColumnDefinition Width="100" />
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock Grid.Column="0" Text="名称" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="0"
+                                                               Text="{Binding [Settings.Agent.Name], Source={x:Static loc:Loc.Instance}}"
+                                                               VerticalAlignment="Center" />
                                                     <ui:TextBox Grid.Column="1"
                                                                 Margin="0,0,8,0"
                                                                 Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" />
-                                                    <TextBlock Grid.Column="2" Text="角色" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="2"
+                                                               Text="{Binding [Settings.Agent.Role], Source={x:Static loc:Loc.Instance}}"
+                                                               VerticalAlignment="Center" />
                                                     <ComboBox Grid.Column="3"
                                                               ItemsSource="{Binding Source={x:Type enums:AgentRole}, Converter={StaticResource EnumDisplay}}"
                                                               SelectedItem="{Binding Role, Converter={StaticResource EnumDisplay}}" />
@@ -168,7 +176,7 @@
                                                                VerticalAlignment="Center" />
                                                     <ui:TextBox Grid.Column="1"
                                                                 Text="{Binding Endpoint, UpdateSourceTrigger=PropertyChanged}"
-                                                                PlaceholderText="留空使用默认值" />
+                                                                PlaceholderText="{Binding [Settings.Agent.Placeholder.Endpoint], Source={x:Static loc:Loc.Instance}}" />
                                                 </Grid>
 
                                                 <Grid Margin="0,0,0,8">
@@ -180,7 +188,7 @@
                                                                VerticalAlignment="Center" />
                                                     <ui:TextBox Grid.Column="1"
                                                                 Text="{Binding APIKey, UpdateSourceTrigger=PropertyChanged}"
-                                                                PlaceholderText="本地模型可留空" />
+                                                                PlaceholderText="{Binding [Settings.Agent.Placeholder.APIKey], Source={x:Static loc:Loc.Instance}}" />
                                                 </Grid>
 
                                                 <Grid Margin="0,0,0,8">
@@ -188,7 +196,9 @@
                                                         <ColumnDefinition Width="100" />
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock Grid.Column="0" Text="模型名" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="0"
+                                                               Text="{Binding [Settings.Agent.ModelName], Source={x:Static loc:Loc.Instance}}"
+                                                               VerticalAlignment="Center" />
                                                     <ui:TextBox Grid.Column="1"
                                                                 Text="{Binding ModelName, UpdateSourceTrigger=PropertyChanged}" />
                                                 </Grid>
@@ -200,14 +210,18 @@
                                                         <ColumnDefinition Width="100" />
                                                         <ColumnDefinition Width="120" />
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock Grid.Column="0" Text="温度" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="0"
+                                                               Text="{Binding [Settings.Agent.Temperature], Source={x:Static loc:Loc.Instance}}"
+                                                               VerticalAlignment="Center" />
                                                     <ui:NumberBox Grid.Column="1"
                                                                   Margin="0,0,8,0"
                                                                   Value="{Binding Temperature}"
                                                                   Minimum="0"
                                                                   Maximum="2"
                                                                   SpinButtonPlacementMode="Compact" />
-                                                    <TextBlock Grid.Column="2" Text="重试次数" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="2"
+                                                               Text="{Binding [Settings.Agent.MaxRetries], Source={x:Static loc:Loc.Instance}}"
+                                                               VerticalAlignment="Center" />
                                                     <ui:NumberBox Grid.Column="3"
                                                                   Value="{Binding MaxRetries}"
                                                                   Minimum="0"
@@ -215,17 +229,19 @@
                                                                   SpinButtonPlacementMode="Compact" />
                                                 </Grid>
 
-                                                <CheckBox Content="启用"
-                                                          IsChecked="{Binding Enabled}"
-                                                          Margin="0,4,0,0" />
+                                                <CheckBox
+                                                    Content="{Binding [Settings.Agent.Enabled], Source={x:Static loc:Loc.Instance}}"
+                                                    IsChecked="{Binding Enabled}"
+                                                    Margin="0,4,0,0" />
 
-                                                <ui:Button Content="测试连接"
-                                                           Icon="PlugConnected24"
-                                                           Appearance="Secondary"
-                                                           Margin="0,12,0,0"
-                                                           Command="{Binding DataContext.TestAgentConnectionCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
-                                                           CommandParameter="{Binding}"
-                                                           IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBool}}" />
+                                                <ui:Button
+                                                    Content="{Binding [Settings.Agent.TestConnection], Source={x:Static loc:Loc.Instance}}"
+                                                    Icon="PlugConnected24"
+                                                    Appearance="Secondary"
+                                                    Margin="0,12,0,0"
+                                                    Command="{Binding DataContext.TestAgentConnectionCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
+                                                    CommandParameter="{Binding}"
+                                                    IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBool}}" />
 
                                                 <TextBlock Text="{Binding ConnectionMessage}"
                                                            Margin="0,4,0,0"
@@ -276,10 +292,10 @@
 
                 <StackPanel Grid.Column="1"
                             Orientation="Horizontal">
-                    <ui:Button Content="关闭"
+                    <ui:Button Content="{Binding [Common.Close], Source={x:Static loc:Loc.Instance}}"
                                Margin="0,0,8,0"
                                Click="OnCloseClick" />
-                    <ui:Button Content="保存"
+                    <ui:Button Content="{Binding [Common.Save], Source={x:Static loc:Loc.Instance}}"
                                Appearance="Primary"
                                Click="OnSaveClick"
                                IsEnabled="{Binding IsSaving, Converter={StaticResource InverseBool}}" />

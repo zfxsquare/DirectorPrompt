@@ -7,8 +7,10 @@ using DirectorPrompt.Domain.Repositories;
 using DirectorPrompt.Domain.Services;
 using DirectorPrompt.Infrastructure;
 using DirectorPrompt.Infrastructure.AI;
+using DirectorPrompt.Infrastructure.Localization;
 using DirectorPrompt.Infrastructure.Logging;
 using DirectorPrompt.Infrastructure.Repositories;
+using DirectorPrompt.Localization;
 using DirectorPrompt.ViewModels;
 using DirectorPrompt.Views;
 using Microsoft.Extensions.Configuration;
@@ -44,6 +46,9 @@ public partial class App : Application
                        .Build();
 
             host.StartAsync().GetAwaiter().GetResult();
+
+            var localizationService = host.Services.GetRequiredService<ILocalizationService>();
+            Loc.Instance.SetService(localizationService);
 
             var migrator = host.Services.GetRequiredService<SchemaMigrator>();
             migrator.MigrateAsync().GetAwaiter().GetResult();
@@ -152,6 +157,8 @@ public partial class App : Application
          )
         );
 
+        RegisterLocalization(services, configuration);
+
         services.AddSingleton<Orchestrator>();
 
         services.AddSingleton<MainViewModel>();
@@ -161,5 +168,31 @@ public partial class App : Application
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<ProjectEditWindow>();
         services.AddTransient<SettingsWindow>();
+    }
+
+    private static void RegisterLocalization(IServiceCollection services, IConfiguration configuration)
+    {
+        var langDirectory = Path.Combine(AppContext.BaseDirectory, "Assets", "Langs");
+
+        var preferredLanguage = configuration["Localization:Language"] ?? "en";
+
+        var options = new LocalizationOptions
+        {
+            DefaultLanguage  = "en",
+            FileNameResolver = static language => $"{language}.json",
+            Source           = new FileLocalizationSource(langDirectory),
+            Parser           = new JSONDictionaryLocalizationParser(),
+            FallbackResolver = static language => language switch
+            {
+                "zh-CN" => ["en"],
+                _       => []
+            },
+            EnableHotReload = true,
+            ReloadDebounce  = TimeSpan.FromSeconds(3),
+            LoggerTag       = nameof(LocalizationService)
+        };
+
+        services.AddSingleton<ILocalizationService>
+            (_ => new LocalizationService(options, preferredLanguage, preferredLanguage));
     }
 }

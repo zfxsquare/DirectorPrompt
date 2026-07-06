@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Repositories;
@@ -7,12 +8,10 @@ using Serilog;
 namespace DirectorPrompt.Agents.Tools;
 
 public sealed class StateTools
+(
+    IStateRepository stateRepository
+)
 {
-    private readonly IStateRepository stateRepository;
-
-    public StateTools(IStateRepository stateRepository) =>
-        this.stateRepository = stateRepository;
-
     public IList<AIFunction> Create(ToolExecutionContext context) =>
     [
         AIFunctionFactory.Create
@@ -46,7 +45,7 @@ public sealed class StateTools
                 SetStateAsync(context, attribute, value, reason),
             "set_state",
             "设置状态属性为指定值。attribute: 属性名; value: 新值; reason: 变更原因"
-        ),
+        )
     ];
 
     private async Task<string> GetStateAsync(ToolExecutionContext context, string attribute)
@@ -137,21 +136,26 @@ public sealed class StateTools
         (
             attr.ID,
             context.SessionID,
-            newValue.ToString(),
+            newValue.ToString(CultureInfo.InvariantCulture),
             StateChangeSource.StateAgent,
             reason,
             context.SceneID ?? 0,
             context.RoundID
         );
 
-        Log.Information("工具调用完成: update_state, {OldValue} -> {NewValue}", currentValue?.Value, newValue.ToString());
+        Log.Information
+        (
+            "工具调用完成: update_state, {OldValue} -> {NewValue}",
+            currentValue?.Value,
+            newValue.ToString(CultureInfo.InvariantCulture)
+        );
 
         return JsonSerializer.Serialize
         (
             new
             {
                 oldValue = currentValue?.Value,
-                newValue = newValue.ToString()
+                newValue = newValue.ToString(CultureInfo.InvariantCulture)
             }
         );
     }
@@ -193,5 +197,4 @@ public sealed class StateTools
             }
         );
     }
-
 }

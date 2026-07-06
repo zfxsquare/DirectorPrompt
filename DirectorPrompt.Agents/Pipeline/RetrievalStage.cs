@@ -83,7 +83,7 @@ public sealed class RetrievalStage
 
         var messages = new List<ChatMessage>
         {
-            new(ChatRole.System, KnowledgeAgentPrompt.System),
+            new(ChatRole.System, KnowledgeAgentPrompt.SYSTEM),
             new(ChatRole.User, directorInput)
         };
 
@@ -133,7 +133,7 @@ public sealed class RetrievalStage
 
         var messages = new List<ChatMessage>
         {
-            new(ChatRole.System, MemorySubAgentPrompt.Recall),
+            new(ChatRole.System, MemorySubAgentPrompt.RECALL),
             new(ChatRole.User, directorInput)
         };
 

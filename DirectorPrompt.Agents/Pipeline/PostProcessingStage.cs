@@ -51,7 +51,7 @@ public sealed class PostProcessingStage
 
         var messages = new List<ChatMessage>
         {
-            new(ChatRole.System, MemorySubAgentPrompt.Update),
+            new(ChatRole.System, MemorySubAgentPrompt.UPDATE),
             new(ChatRole.User, $"{agentContext}\n\n---\n\n## 叙事文本\n{context.NarrativeOutput ?? string.Empty}")
         };
 

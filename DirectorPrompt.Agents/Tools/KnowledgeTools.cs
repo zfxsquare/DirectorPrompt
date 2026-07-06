@@ -1,5 +1,4 @@
 using System.Text.Json;
-using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 using DirectorPrompt.Domain.Services;
 using Microsoft.Extensions.AI;
@@ -8,16 +7,11 @@ using Serilog;
 namespace DirectorPrompt.Agents.Tools;
 
 public sealed class KnowledgeTools
+(
+    IKnowledgeRepository     knowledgeRepository,
+    IEmbeddingServiceFactory embeddingServiceFactory
+)
 {
-    private readonly IKnowledgeRepository   knowledgeRepository;
-    private readonly IEmbeddingServiceFactory embeddingServiceFactory;
-
-    public KnowledgeTools(IKnowledgeRepository knowledgeRepository, IEmbeddingServiceFactory embeddingServiceFactory)
-    {
-        this.knowledgeRepository     = knowledgeRepository;
-        this.embeddingServiceFactory = embeddingServiceFactory;
-    }
-
     public IList<AIFunction> Create(ToolExecutionContext context) =>
     [
         AIFunctionFactory.Create
@@ -43,11 +37,13 @@ public sealed class KnowledgeTools
         var embeddingService = embeddingServiceFactory.Create(context.EmbeddingConfig);
 
         var needsRegeneration = entries
-                                .Where(e =>
-                                {
-                                    var currentHash = EmbeddingConversions.ComputeHash($"{e.Title}\n{e.Content}");
-                                    return e.ContentHash != currentHash;
-                                })
+                                .Where
+                                (e =>
+                                    {
+                                        var currentHash = EmbeddingConversions.ComputeHash($"{e.Title}\n{e.Content}");
+                                        return e.ContentHash != currentHash;
+                                    }
+                                )
                                 .ToList();
 
         if (needsRegeneration.Count > 0)

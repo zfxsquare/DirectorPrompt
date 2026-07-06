@@ -9,16 +9,11 @@ using Serilog;
 namespace DirectorPrompt.Agents.Tools;
 
 public sealed class SceneTools
+(
+    ISceneRepository    sceneRepository,
+    ITimelineCalculator timelineCalculator
+)
 {
-    private readonly ISceneRepository    sceneRepository;
-    private readonly ITimelineCalculator timelineCalculator;
-
-    public SceneTools(ISceneRepository sceneRepository, ITimelineCalculator timelineCalculator)
-    {
-        this.sceneRepository    = sceneRepository;
-        this.timelineCalculator = timelineCalculator;
-    }
-
     public IList<AIFunction> Create(ToolExecutionContext context) =>
     [
         AIFunctionFactory.Create

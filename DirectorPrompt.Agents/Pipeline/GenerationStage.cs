@@ -231,7 +231,7 @@ public sealed class GenerationStage
     {
         var sb = new StringBuilder();
 
-        sb.AppendLine(NarratorPrompt.System);
+        sb.AppendLine(NarratorPrompt.SYSTEM);
 
         if (context.Project is not null)
         {

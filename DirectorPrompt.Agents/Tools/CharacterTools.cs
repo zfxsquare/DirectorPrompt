@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
@@ -8,16 +9,11 @@ using Serilog;
 namespace DirectorPrompt.Agents.Tools;
 
 public sealed class CharacterTools
+(
+    ICharacterRepository characterRepository,
+    IStateRepository     stateRepository
+)
 {
-    private readonly ICharacterRepository characterRepository;
-    private readonly IStateRepository     stateRepository;
-
-    public CharacterTools(ICharacterRepository characterRepository, IStateRepository stateRepository)
-    {
-        this.characterRepository = characterRepository;
-        this.stateRepository     = stateRepository;
-    }
-
     public IList<AIFunction> Create(ToolExecutionContext context) =>
     [
         AIFunctionFactory.Create
@@ -376,14 +372,14 @@ public sealed class CharacterTools
         var currentNum   = double.Parse(currentValue?.Value ?? "0");
         var newValue     = currentNum + delta;
 
-        await characterRepository.SetCharacterStateValueAsync(character.ID, attr.ID, newValue.ToString());
+        await characterRepository.SetCharacterStateValueAsync(character.ID, attr.ID, newValue.ToString(CultureInfo.InvariantCulture));
 
         return JsonSerializer.Serialize
         (
             new
             {
                 oldValue = currentValue?.Value,
-                newValue = newValue.ToString()
+                newValue = newValue.ToString(CultureInfo.InvariantCulture)
             }
         );
     }

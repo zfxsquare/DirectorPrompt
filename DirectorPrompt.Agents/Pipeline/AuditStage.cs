@@ -127,23 +127,23 @@ public sealed class AuditStage
         dimension switch
         {
             AuditDimension.Setting => (
-                                          AuditAgentPrompt.Setting,
+                                          Setting: AuditAgentPrompt.SETTING,
                                           knowledgeTools.Create(context)
                                       ),
             AuditDimension.State => (
-                                        AuditAgentPrompt.State,
+                                        State: AuditAgentPrompt.STATE,
                                         [.. stateTools.Create(context), .. characterTools.Create(context)]
                                     ),
             AuditDimension.Character => (
-                                            AuditAgentPrompt.Character,
+                                            Character: AuditAgentPrompt.CHARACTER,
                                             characterTools.Create(context)
                                         ),
             AuditDimension.Time => (
-                                       AuditAgentPrompt.Time,
+                                       Time: AuditAgentPrompt.TIME,
                                        sceneTools.Create(context)
                                    ),
             AuditDimension.Memory => (
-                                         AuditAgentPrompt.Memory,
+                                         Memory: AuditAgentPrompt.MEMORY,
                                          memoryTools.Create(context)
                                      ),
             _ => throw new ArgumentOutOfRangeException(nameof(dimension))

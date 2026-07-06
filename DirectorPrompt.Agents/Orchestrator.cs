@@ -437,7 +437,7 @@ public sealed class Orchestrator
 
         var messages = new List<ChatMessage>
         {
-            new(ChatRole.System, SceneAgentPrompt.System),
+            new(ChatRole.System, SceneAgentPrompt.SYSTEM),
             new(ChatRole.User, description)
         };
 
@@ -488,7 +488,7 @@ public sealed class Orchestrator
                     new
                     (
                         ChatRole.System,
-                        SceneAgentPrompt.System + "\n\n注意: 你之前没有调用 create_scene 工具, 这是强制要求。请立即调用 create_scene 工具创建场景, 不要只回复文本。"
+                        SceneAgentPrompt.SYSTEM + "\n\n注意: 你之前没有调用 create_scene 工具, 这是强制要求。请立即调用 create_scene 工具创建场景, 不要只回复文本。"
                     ),
 
                     new(ChatRole.User, description)
@@ -581,10 +581,10 @@ public sealed class Orchestrator
                 history.Add(new ChatHistoryEntry(roundID, directorInput, narrativeText));
         }
 
-        const int maxHistoryRounds = 10;
+        const int MAX_HISTORY_ROUNDS = 10;
 
-        if (history.Count > maxHistoryRounds)
-            history = history.TakeLast(maxHistoryRounds).ToList();
+        if (history.Count > MAX_HISTORY_ROUNDS)
+            history = history.TakeLast(MAX_HISTORY_ROUNDS).ToList();
 
         return history;
     }

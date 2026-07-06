@@ -15,9 +15,9 @@ public sealed partial class SettingsViewModel : ObservableObject
 {
     private static readonly JsonSerializerOptions JSONOptions = new()
     {
-        WriteIndented = true,
+        WriteIndented          = true,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        Converters = { new JsonStringEnumConverter() }
+        Converters             = { new JsonStringEnumConverter() }
     };
 
     private static readonly string UserSettingsDir = Path.Combine
@@ -87,17 +87,17 @@ public sealed partial class SettingsViewModel : ObservableObject
             (
                 new AgentSettingViewModel
                 {
-                    Name        = agent.Name,
-                    Role        = agent.Role,
-                    Provider    = agent.ModelConfig.Provider,
-                    Endpoint    = agent.ModelConfig.Endpoint,
-                    APIKey      = agent.ModelConfig.APIKey ?? string.Empty,
-                    ModelName   = agent.ModelConfig.ModelName,
+                    Name         = agent.Name,
+                    Role         = agent.Role,
+                    Provider     = agent.ModelConfig.Provider,
+                    Endpoint     = agent.ModelConfig.Endpoint,
+                    APIKey       = agent.ModelConfig.APIKey ?? string.Empty,
+                    ModelName    = agent.ModelConfig.ModelName,
                     SystemPrompt = agent.SystemPrompt,
-                    Temperature = agent.Temperature,
-                    Tools       = agent.Tools,
-                    Enabled     = agent.Enabled,
-                    MaxRetries  = agent.MaxRetries
+                    Temperature  = agent.Temperature,
+                    Tools        = agent.Tools,
+                    Enabled      = agent.Enabled,
+                    MaxRetries   = agent.MaxRetries
                 }
             );
         }
@@ -141,12 +141,11 @@ public sealed partial class SettingsViewModel : ObservableObject
     private UserSettings BuildUserSettings()
     {
         var agents = Agents.Select
-        (
-            a => new AgentDefinition
+        (a => new AgentDefinition
             {
-                Name         = a.Name,
-                Role         = a.Role,
-                ModelConfig  = new ModelConfig
+                Name = a.Name,
+                Role = a.Role,
+                ModelConfig = new ModelConfig
                 {
                     Provider  = a.Provider,
                     Endpoint  = a.Endpoint,
@@ -166,7 +165,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             Database = new DatabaseConfig { Path = DatabasePath },
             Orchestrator = new UserOrchestratorConfig
             {
-                Agents          = agents,
+                Agents           = agents,
                 SnapshotInterval = SnapshotInterval
             },
             Localization = new LocalizationConfig { Language = SelectedLanguage }

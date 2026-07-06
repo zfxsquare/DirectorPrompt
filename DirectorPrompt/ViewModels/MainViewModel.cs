@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Text;
 using System.Text.Json;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -506,10 +505,8 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void CancelEdit(DialogEntryViewModel entry)
-    {
+    private void CancelEdit(DialogEntryViewModel entry) =>
         entry.CancelEdit();
-    }
 
     partial void OnCurrentProjectChanged(Project? value)
     {

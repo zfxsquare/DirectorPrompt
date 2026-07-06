@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
@@ -8,6 +8,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <UseWPF>true</UseWPF>
         <RootNamespace>DirectorPrompt</RootNamespace>
+        <ApplicationIcon>..\Assets\Images\Icon.ico</ApplicationIcon>
     </PropertyGroup>
 
     <ItemGroup>
@@ -41,6 +42,15 @@
             <Link>Assets\Langs\%(Filename)%(Extension)</Link>
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Resource Include="..\Assets\Images\Icon.ico">
+            <Link>Assets\Images\Icon.ico</Link>
+        </Resource>
+        <Resource Include="..\Assets\Images\Icon-NoBackground.png">
+            <Link>Assets\Images\Icon-NoBackground.png</Link>
+        </Resource>
     </ItemGroup>
 
     <ItemGroup>

@@ -17,7 +17,8 @@
                  MinHeight="480"
                  ExtendsContentIntoTitleBar="True"
                  WindowBackdropType="Mica"
-                 WindowCornerPreference="Round">
+                 WindowCornerPreference="Round"
+                 Icon="pack://application:,,,/Assets/Images/Icon.ico">
     <ui:FluentWindow.Resources>
         <converters:EnumDisplayConverter x:Key="EnumDisplay" />
         <converters:InverseBoolConverter x:Key="InverseBool" />
@@ -34,7 +35,11 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <ui:TitleBar Grid.Row="0" Title="{Binding [Settings.Title], Source={x:Static loc:Loc.Instance}}" />
+        <ui:TitleBar Grid.Row="0" Title="{Binding [Settings.Title], Source={x:Static loc:Loc.Instance}}">
+            <ui:TitleBar.Icon>
+                <ui:ImageIcon Source="pack://application:,,,/Assets/Images/Icon-NoBackground.png" />
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>

@@ -112,7 +112,9 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
         }
     }
 
-    public string Role => IsDirector ? "导演" : "AI";
+    public string Role => IsDirector ?
+                              "导演" :
+                              "AI";
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -137,8 +139,8 @@ public sealed class DialogEntryViewModel : INotifyPropertyChanged
 
     public void CommitEdit()
     {
-        Content    = EditingContent;
-        IsEditing  = false;
+        Content   = EditingContent;
+        IsEditing = false;
         RenderMarkdown();
     }
 
@@ -253,10 +255,10 @@ public sealed class DialogViewModel
             entry.IsLast = false;
     }
 
-    private static void DeferredRender(DialogEntryViewModel entry)
-    {
-        Application.Current.Dispatcher.BeginInvoke(
+    private static void DeferredRender(DialogEntryViewModel entry) =>
+        Application.Current.Dispatcher.BeginInvoke
+        (
             DispatcherPriority.Background,
-            entry.RenderMarkdown);
-    }
+            entry.RenderMarkdown
+        );
 }

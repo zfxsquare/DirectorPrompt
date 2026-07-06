@@ -8,6 +8,8 @@ public record Scene
 
     public long ProjectID { get; init; }
 
+    public long SessionID { get; init; }
+
     public long TimelinePosition { get; init; }
 
     public string TimeLabel { get; init; } = string.Empty;

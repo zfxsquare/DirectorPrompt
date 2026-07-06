@@ -20,9 +20,11 @@ public sealed class EventTypeToDisplayConverter : IValueConverter
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
         if (value is EventType type)
+        {
             return DisplayNames.TryGetValue(type, out var name) ?
                        name :
                        type.ToString();
+        }
 
         return string.Empty;
     }

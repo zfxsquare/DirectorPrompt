@@ -100,7 +100,7 @@ public sealed class CharacterTools
 
     private async Task<string> GetCharacterAsync(ToolExecutionContext context, string name)
     {
-        var character = await characterRepository.GetByNameAsync(context.ProjectID, name);
+        var character = await characterRepository.GetByNameAsync(context.SessionID, name);
 
         if (character is null)
             return JsonSerializer.Serialize(new { error = $"人物 {name} 不存在" });
@@ -148,7 +148,7 @@ public sealed class CharacterTools
 
     private async Task<string> GetRelationsAsync(ToolExecutionContext context, string characterName)
     {
-        var character = await characterRepository.GetByNameAsync(context.ProjectID, characterName);
+        var character = await characterRepository.GetByNameAsync(context.SessionID, characterName);
 
         if (character is null)
             return JsonSerializer.Serialize(new { error = $"人物 {characterName} 不存在" });
@@ -178,7 +178,7 @@ public sealed class CharacterTools
         string               attribute
     )
     {
-        var character = await characterRepository.GetByNameAsync(context.ProjectID, characterName);
+        var character = await characterRepository.GetByNameAsync(context.SessionID, characterName);
 
         if (character is null)
             return JsonSerializer.Serialize(new { error = $"人物 {characterName} 不存在" });
@@ -212,7 +212,7 @@ public sealed class CharacterTools
         string               reason
     )
     {
-        var existing = await characterRepository.GetByNameAsync(context.ProjectID, name);
+        var existing = await characterRepository.GetByNameAsync(context.SessionID, name);
 
         if (existing is not null)
             return JsonSerializer.Serialize(new { error = $"人物 {name} 已存在" });
@@ -226,6 +226,7 @@ public sealed class CharacterTools
         var character = new Character
         {
             ProjectID   = context.ProjectID,
+            SessionID   = context.SessionID,
             Name        = name,
             Description = description,
             CategoryIDs = categoryIDList,
@@ -239,7 +240,7 @@ public sealed class CharacterTools
 
     private async Task<string> RemoveCharacterAsync(ToolExecutionContext context, string name, string reason)
     {
-        var character = await characterRepository.GetByNameAsync(context.ProjectID, name);
+        var character = await characterRepository.GetByNameAsync(context.SessionID, name);
 
         if (character is null)
             return JsonSerializer.Serialize(new { error = $"人物 {name} 不存在" });
@@ -257,7 +258,7 @@ public sealed class CharacterTools
         string               reason
     )
     {
-        var character = await characterRepository.GetByNameAsync(context.ProjectID, name);
+        var character = await characterRepository.GetByNameAsync(context.SessionID, name);
 
         if (character is null)
             return JsonSerializer.Serialize(new { error = $"人物 {name} 不存在" });
@@ -278,8 +279,8 @@ public sealed class CharacterTools
         string               reason
     )
     {
-        var source = await characterRepository.GetByNameAsync(context.ProjectID, sourceName);
-        var target = await characterRepository.GetByNameAsync(context.ProjectID, targetName);
+        var source = await characterRepository.GetByNameAsync(context.SessionID, sourceName);
+        var target = await characterRepository.GetByNameAsync(context.SessionID, targetName);
 
         if (source is null)
             return JsonSerializer.Serialize(new { error = $"人物 {sourceName} 不存在" });
@@ -289,7 +290,7 @@ public sealed class CharacterTools
 
         await characterRepository.SetRelationAsync
         (
-            context.ProjectID,
+            context.SessionID,
             source.ID,
             target.ID,
             relationType,
@@ -316,7 +317,7 @@ public sealed class CharacterTools
         if (context.SceneID is null)
             return JsonSerializer.Serialize(new { error = "当前没有活跃场景" });
 
-        var character = await characterRepository.GetByNameAsync(context.ProjectID, name);
+        var character = await characterRepository.GetByNameAsync(context.SessionID, name);
 
         if (character is null)
             return JsonSerializer.Serialize(new { error = $"人物 {name} 不存在" });
@@ -331,7 +332,7 @@ public sealed class CharacterTools
         if (context.SceneID is null)
             return JsonSerializer.Serialize(new { error = "当前没有活跃场景" });
 
-        var character = await characterRepository.GetByNameAsync(context.ProjectID, name);
+        var character = await characterRepository.GetByNameAsync(context.SessionID, name);
 
         if (character is null)
             return JsonSerializer.Serialize(new { error = $"人物 {name} 不存在" });
@@ -350,7 +351,7 @@ public sealed class CharacterTools
         string               reason
     )
     {
-        var character = await characterRepository.GetByNameAsync(context.ProjectID, characterName);
+        var character = await characterRepository.GetByNameAsync(context.SessionID, characterName);
 
         if (character is null)
             return JsonSerializer.Serialize(new { error = $"人物 {characterName} 不存在" });
@@ -387,7 +388,7 @@ public sealed class CharacterTools
         string               reason
     )
     {
-        var character = await characterRepository.GetByNameAsync(context.ProjectID, characterName);
+        var character = await characterRepository.GetByNameAsync(context.SessionID, characterName);
 
         if (character is null)
             return JsonSerializer.Serialize(new { error = $"人物 {characterName} 不存在" });

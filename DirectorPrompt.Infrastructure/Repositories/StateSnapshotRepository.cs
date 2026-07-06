@@ -13,7 +13,7 @@ public sealed class StateSnapshotRepository : IStateSnapshotRepository
 
     public async Task<StateSnapshot?> GetLatestAsync
     (
-        long              projectID,
+        long              sessionID,
         long              beforeRoundID,
         CancellationToken cancellationToken = default
     )
@@ -24,11 +24,11 @@ public sealed class StateSnapshotRepository : IStateSnapshotRepository
                   (
                       """
                       SELECT * FROM state_snapshots
-                      WHERE project_id = @projectID AND round_id < @beforeRoundID
+                      WHERE session_id = @sessionID AND round_id < @beforeRoundID
                       ORDER BY round_id DESC
                       LIMIT 1
                       """,
-                      new { projectID, beforeRoundID }
+                      new { sessionID, beforeRoundID }
                   );
 
         return row?.ToStateSnapshot();
@@ -42,13 +42,14 @@ public sealed class StateSnapshotRepository : IStateSnapshotRepository
                  (
                      """
                      INSERT INTO state_snapshots
-                         (project_id, round_id, global_state, character_state, flags, active_directives, current_scene_id, scene_characters, created_at)
-                     VALUES (@projectID, @roundID, @globalState, @characterState, @flags, @activeDirectives, @currentSceneID, @sceneCharacters, @createdAt);
+                         (project_id, session_id, round_id, global_state, character_state, flags, active_directives, current_scene_id, scene_characters, created_at)
+                     VALUES (@projectID, @sessionID, @roundID, @globalState, @characterState, @flags, @activeDirectives, @currentSceneID, @sceneCharacters, @createdAt);
                      SELECT last_insert_rowid();
                      """,
                      new
                      {
                          projectID        = snapshot.ProjectID,
+                         sessionID        = snapshot.SessionID,
                          roundID          = snapshot.RoundID,
                          globalState      = snapshot.GlobalState,
                          characterState   = snapshot.CharacterState,
@@ -85,6 +86,7 @@ public sealed class StateSnapshotRepository : IStateSnapshotRepository
     {
         public long   ID                { get; set; }
         public long   Project_ID        { get; set; }
+        public long?  Session_ID        { get; set; }
         public long   Round_ID          { get; set; }
         public string Global_State      { get; set; } = "{}";
         public string Character_State   { get; set; } = "{}";
@@ -99,6 +101,7 @@ public sealed class StateSnapshotRepository : IStateSnapshotRepository
             {
                 ID               = ID,
                 ProjectID        = Project_ID,
+                SessionID        = Session_ID ?? 0,
                 RoundID          = Round_ID,
                 GlobalState      = Global_State,
                 CharacterState   = Character_State,

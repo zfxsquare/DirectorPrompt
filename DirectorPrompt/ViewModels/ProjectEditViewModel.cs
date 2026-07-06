@@ -205,14 +205,18 @@ public sealed partial class ProjectEditViewModel : ObservableObject
             using var doc = JsonDocument.Parse(json);
 
             if (doc.RootElement.TryGetProperty("min", out var min))
+            {
                 vm.MinValue = min.ValueKind == JsonValueKind.Null ?
                                   null :
                                   min.GetSingle();
+            }
 
             if (doc.RootElement.TryGetProperty("max", out var max))
+            {
                 vm.MaxValue = max.ValueKind == JsonValueKind.Null ?
                                   null :
                                   max.GetSingle();
+            }
 
             if (doc.RootElement.TryGetProperty("unit", out var unit) && unit.ValueKind != JsonValueKind.Null)
                 vm.Unit = unit.GetString() ?? string.Empty;
@@ -292,7 +296,7 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         Flags.Clear();
 
         var attributes = await stateRepository.GetAttributesAsync(projectID);
-        var values     = await stateRepository.GetAllStateValuesAsync(projectID);
+        var values     = await stateRepository.GetAllStateValuesAsync(projectID, 0);
 
         foreach (var attr in attributes)
         {
@@ -669,7 +673,7 @@ public sealed partial class ProjectEditViewModel : ObservableObject
 
         var name = $"flag_{Flags.Count + 1}";
 
-        await stateRepository.SetFlagAsync(projectID, name, false, null);
+        await stateRepository.SetFlagAsync(projectID, 0, name, false, null);
 
         Flags.Add
         (

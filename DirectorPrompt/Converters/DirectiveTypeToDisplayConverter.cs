@@ -17,9 +17,11 @@ public sealed class DirectiveTypeToDisplayConverter : IValueConverter
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
         if (value is DirectiveType type)
+        {
             return DisplayNames.TryGetValue(type, out var name) ?
                        name :
                        type.ToString();
+        }
 
         return string.Empty;
     }

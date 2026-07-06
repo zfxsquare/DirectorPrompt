@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -16,6 +17,7 @@ public sealed partial class MainViewModel : ObservableObject
 {
     private readonly Orchestrator         orchestrator;
     private readonly IProjectRepository   projectRepository;
+    private readonly ISessionRepository   sessionRepository;
     private readonly IEventRepository     eventRepository;
     private readonly ISceneRepository     sceneRepository;
     private readonly IStateRepository     stateRepository;
@@ -28,12 +30,18 @@ public sealed partial class MainViewModel : ObservableObject
     private Project? currentProject;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSessionSelected))]
+    private Session? currentSession;
+
+    [ObservableProperty]
     private string statusMessage = "就绪";
 
     [ObservableProperty]
     private bool isProcessing;
 
     public bool IsProjectSelected => CurrentProject is not null;
+
+    public bool IsSessionSelected => CurrentSession is not null;
 
     public DialogViewModel Dialog { get; } = new();
 
@@ -47,10 +55,15 @@ public sealed partial class MainViewModel : ObservableObject
 
     public ObservableCollection<Project> Projects { get; } = [];
 
+    public ObservableCollection<Session> Sessions { get; } = [];
+
+    public ObservableCollection<PipelineStageViewModel> PipelineStages { get; } = [];
+
     public MainViewModel
     (
         Orchestrator         orchestrator,
         IProjectRepository   projectRepository,
+        ISessionRepository   sessionRepository,
         IEventRepository     eventRepository,
         ISceneRepository     sceneRepository,
         IStateRepository     stateRepository,
@@ -61,6 +74,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         this.orchestrator        = orchestrator;
         this.projectRepository   = projectRepository;
+        this.sessionRepository   = sessionRepository;
         this.eventRepository     = eventRepository;
         this.sceneRepository     = sceneRepository;
         this.stateRepository     = stateRepository;
@@ -98,6 +112,72 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task LoadSessionsAsync()
+    {
+        if (CurrentProject is null)
+            return;
+
+        try
+        {
+            Log.Information("加载对话列表: 项目={ProjectID}", CurrentProject.ID);
+
+            var sessions = await sessionRepository.GetByProjectAsync(CurrentProject.ID);
+
+            var previousID = CurrentSession?.ID;
+
+            Sessions.Clear();
+
+            foreach (var session in sessions)
+                Sessions.Add(session);
+
+            if (previousID.HasValue)
+                CurrentSession = Sessions.FirstOrDefault(s => s.ID == previousID.Value);
+
+            Log.Information("对话列表加载完成: 数量={Count}", Sessions.Count);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "加载对话列表失败");
+            StatusMessage = $"加载失败: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task NewSessionAsync()
+    {
+        if (CurrentProject is null)
+            return;
+
+        try
+        {
+            var now = DateTime.UtcNow;
+
+            var session = await sessionRepository.CreateAsync
+                          (
+                              new Session
+                              {
+                                  ProjectID = CurrentProject.ID,
+                                  Title     = $"对话 {DateTime.Now:MM-dd HH:mm}",
+                                  CreatedAt = now,
+                                  UpdatedAt = now
+                              }
+                          );
+
+            await characterRepository.CloneProjectCharactersToSessionAsync(CurrentProject.ID, session.ID);
+
+            Log.Information("创建对话: ID={SessionID}, 项目={ProjectID}", session.ID, CurrentProject.ID);
+
+            await LoadSessionsAsync();
+            CurrentSession = Sessions.FirstOrDefault(s => s.ID == session.ID);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "创建对话失败");
+            StatusMessage = $"创建对话失败: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
     private void NewProject()
     {
         var window = serviceProvider.GetRequiredService<ProjectEditWindow>();
@@ -131,12 +211,34 @@ public sealed partial class MainViewModel : ObservableObject
 
     private static Window? GetCurrentWindow() => Application.Current.Windows.Cast<Window>().FirstOrDefault(w => w.IsActive);
 
+    private void ResetPipelineStages() =>
+        PipelineStages.Clear();
+
+    private void UpdatePipelineStage(string stage, string status, string? detail = null)
+    {
+        var existing = PipelineStages.FirstOrDefault(s => s.Stage == stage);
+
+        if (existing is not null)
+        {
+            existing.Status = status;
+            existing.Detail = detail;
+        }
+        else
+            PipelineStages.Add(new PipelineStageViewModel { Stage = stage, Status = status, Detail = detail });
+    }
+
     [RelayCommand]
     private async Task SendDirectivesAsync()
     {
         if (CurrentProject is null)
         {
             StatusMessage = "请先选择或创建项目";
+            return;
+        }
+
+        if (CurrentSession is null)
+        {
+            StatusMessage = "请先选择或创建对话";
             return;
         }
 
@@ -148,6 +250,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         IsProcessing  = true;
         StatusMessage = "处理中…";
+        ResetPipelineStages();
 
         try
         {
@@ -159,9 +262,10 @@ public sealed partial class MainViewModel : ObservableObject
 
             Log.Information
             (
-                "用户发送指令: 项目={ProjectID} ({ProjectName}), 指令数={Count}",
+                "用户发送指令: 项目={ProjectID} ({ProjectName}), 对话={SessionID}, 指令数={Count}",
                 CurrentProject.ID,
                 CurrentProject.Name,
+                CurrentSession.ID,
                 items.Count
             );
 
@@ -178,7 +282,9 @@ public sealed partial class MainViewModel : ObservableObject
             var result = await orchestrator.ProcessBatchAsync
                          (
                              batch,
-                             (narrative, thinking) => { dispatcher.BeginInvoke(new Action(() => { streamingEntry.UpdateStreamingContent(narrative, thinking); })); }
+                             CurrentSession.ID,
+                             (narrative, thinking) => { dispatcher.BeginInvoke(new Action(() => { streamingEntry.UpdateStreamingContent(narrative, thinking); })); },
+                             update => { dispatcher.BeginInvoke(new Action(() => { UpdatePipelineStage(update.Stage, update.Status, update.Detail); })); }
                          );
 
             streamingEntry.RoundID  = result.RoundID;
@@ -221,7 +327,7 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task DeleteLastRoundAsync()
     {
-        if (CurrentProject is null)
+        if (CurrentSession is null)
             return;
 
         IsProcessing  = true;
@@ -229,7 +335,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         try
         {
-            var latestRound = await eventRepository.GetLatestRoundIDAsync(CurrentProject.ID);
+            var latestRound = await eventRepository.GetLatestRoundIDAsync(CurrentSession.ID);
 
             if (latestRound <= 0)
             {
@@ -237,9 +343,9 @@ public sealed partial class MainViewModel : ObservableObject
                 return;
             }
 
-            Log.Information("用户回滚轮次: 项目={ProjectID}, 轮次={RoundID}", CurrentProject.ID, latestRound);
+            Log.Information("用户回滚轮次: 对话={SessionID}, 轮次={RoundID}", CurrentSession.ID, latestRound);
 
-            await orchestrator.DeleteRoundAsync(CurrentProject.ID, latestRound);
+            await orchestrator.DeleteRoundAsync(CurrentSession.ID, latestRound);
 
             Dialog.RemoveEntriesByRound(latestRound);
 
@@ -260,7 +366,7 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task RewriteLastRoundAsync()
     {
-        if (CurrentProject is null)
+        if (CurrentSession is null)
             return;
 
         IsProcessing  = true;
@@ -268,7 +374,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         try
         {
-            var latestRound = await eventRepository.GetLatestRoundIDAsync(CurrentProject.ID);
+            var latestRound = await eventRepository.GetLatestRoundIDAsync(CurrentSession.ID);
 
             if (latestRound <= 0)
             {
@@ -300,14 +406,27 @@ public sealed partial class MainViewModel : ObservableObject
 
     partial void OnCurrentProjectChanged(Project? value)
     {
+        CurrentSession = null;
+        Sessions.Clear();
         Dialog.Clear();
 
         if (value is not null)
         {
             Log.Information("切换项目: ID={ProjectID}, 名称={Name}", value.ID, value.Name);
+            _ = LoadSessionsAsync();
+        }
+    }
 
-            if (!string.IsNullOrWhiteSpace(value.OpeningMessage))
-                Dialog.AddOpeningMessage(value.OpeningMessage);
+    partial void OnCurrentSessionChanged(Session? value)
+    {
+        Dialog.Clear();
+
+        if (value is not null)
+        {
+            Log.Information("切换对话: ID={SessionID}", value.ID);
+
+            if (CurrentProject is not null && !string.IsNullOrWhiteSpace(CurrentProject.OpeningMessage))
+                Dialog.AddOpeningMessage(CurrentProject.OpeningMessage);
 
             _ = RefreshSidebarAsync();
         }
@@ -315,7 +434,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     private async Task RefreshSidebarAsync()
     {
-        if (CurrentProject is null)
+        if (CurrentSession is null || CurrentProject is null)
             return;
 
         await RefreshStatePanelAsync();
@@ -325,12 +444,12 @@ public sealed partial class MainViewModel : ObservableObject
 
     private async Task RefreshStatePanelAsync()
     {
-        if (CurrentProject is null)
+        if (CurrentSession is null || CurrentProject is null)
             return;
 
         StatePanel.Clear();
 
-        var scene = await sceneRepository.GetActiveSceneAsync(CurrentProject.ID);
+        var scene = await sceneRepository.GetActiveSceneAsync(CurrentSession.ID);
 
         if (scene is not null)
         {
@@ -338,7 +457,7 @@ public sealed partial class MainViewModel : ObservableObject
             StatePanel.TimelineLabel     = scene.TimelinePosition.ToString();
         }
 
-        var values     = await stateRepository.GetAllStateValuesAsync(CurrentProject.ID);
+        var values     = await stateRepository.GetAllStateValuesAsync(CurrentProject.ID, CurrentSession.ID);
         var attributes = await stateRepository.GetAttributesAsync(CurrentProject.ID);
 
         foreach (var attr in attributes)
@@ -356,7 +475,7 @@ public sealed partial class MainViewModel : ObservableObject
             );
         }
 
-        var flags = await stateRepository.GetFlagsAsync(CurrentProject.ID);
+        var flags = await stateRepository.GetFlagsAsync(CurrentSession.ID);
 
         foreach (var flag in flags)
         {
@@ -376,12 +495,12 @@ public sealed partial class MainViewModel : ObservableObject
 
     private async Task RefreshDirectivesPanelAsync()
     {
-        if (CurrentProject is null)
+        if (CurrentSession is null)
             return;
 
         DirectivesPanel.Clear();
 
-        var directives = await directiveRepository.GetActiveAsync(CurrentProject.ID);
+        var directives = await directiveRepository.GetActiveAsync(CurrentSession.ID);
 
         foreach (var d in directives)
         {
@@ -408,12 +527,12 @@ public sealed partial class MainViewModel : ObservableObject
 
     private async Task RefreshCharacterPanelAsync()
     {
-        if (CurrentProject is null)
+        if (CurrentSession is null)
             return;
 
         CharacterPanel.Clear();
 
-        var characters = await characterRepository.GetByProjectAsync(CurrentProject.ID);
+        var characters = await characterRepository.GetBySessionAsync(CurrentSession.ID);
 
         foreach (var c in characters)
         {
@@ -428,4 +547,40 @@ public sealed partial class MainViewModel : ObservableObject
             );
         }
     }
+}
+
+public sealed class PipelineStageViewModel : INotifyPropertyChanged
+{
+    private string  status = string.Empty;
+    private string? detail;
+
+    public string Stage { get; init; } = string.Empty;
+
+    public string Status
+    {
+        get => status;
+        set
+        {
+            if (status != value)
+            {
+                status = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Status)));
+            }
+        }
+    }
+
+    public string? Detail
+    {
+        get => detail;
+        set
+        {
+            if (detail != value)
+            {
+                detail = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Detail)));
+            }
+        }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 }

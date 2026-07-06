@@ -45,7 +45,7 @@ public sealed class RetrievalStage
 
     public async Task ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
     {
-        Log.Information("RetrievalStage 开始: 项目={ProjectID}, 轮次={RoundID}", context.DirectiveBatch.ProjectID, context.RoundID);
+        Log.Information("RetrievalStage 开始: 对话={SessionID}, 轮次={RoundID}", context.SessionID, context.RoundID);
 
         var toolContext   = context.ToolContext;
         var knowledgeTask = RetrieveKnowledgeAsync(context, cancellationToken);
@@ -169,8 +169,8 @@ public sealed class RetrievalStage
                             Task.FromResult<Scene?>(null);
 
         var stateTask      = stateRepository.GetAttributesAsync(context.ProjectID, StateScope.Global, cancellationToken);
-        var flagsTask      = stateRepository.GetFlagsAsync(context.ProjectID, cancellationToken);
-        var directivesTask = directiveRepository.GetActiveAsync(context.ProjectID, cancellationToken);
+        var flagsTask      = stateRepository.GetFlagsAsync(context.SessionID, cancellationToken);
+        var directivesTask = directiveRepository.GetActiveAsync(context.SessionID, cancellationToken);
 
         await Task.WhenAll(sceneTask, stateTask, flagsTask, directivesTask);
 
@@ -192,7 +192,7 @@ public sealed class RetrievalStage
 
             foreach (var attr in attributes)
             {
-                var value = await stateRepository.GetStateValueAsync(attr.ID, cancellationToken);
+                var value = await stateRepository.GetStateValueAsync(attr.ID, context.SessionID, cancellationToken);
                 sb.AppendLine($"- {attr.DisplayName}: {value?.Value ?? "未设置"}");
             }
 

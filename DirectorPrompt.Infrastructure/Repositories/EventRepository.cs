@@ -19,13 +19,14 @@ public sealed class EventRepository : IEventRepository
         var id = await connection.ExecuteScalarAsync<long>
                  (
                      """
-                     INSERT INTO playthrough_events (project_id, round_id, type, data, created_at)
-                     VALUES (@projectID, @roundID, @type, @data, @createdAt);
+                     INSERT INTO playthrough_events (project_id, session_id, round_id, type, data, created_at)
+                     VALUES (@projectID, @sessionID, @roundID, @type, @data, @createdAt);
                      SELECT last_insert_rowid();
                      """,
                      new
                      {
                          projectID = eventItem.ProjectID,
+                         sessionID = eventItem.SessionID,
                          roundID   = eventItem.RoundID,
                          type      = eventItem.Type.ToString().ToLowerInvariant(),
                          data      = eventItem.Data,
@@ -36,14 +37,14 @@ public sealed class EventRepository : IEventRepository
         return eventItem with { ID = id };
     }
 
-    public async Task<IReadOnlyList<PlaythroughEvent>> GetByProjectAsync(long projectID, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<PlaythroughEvent>> GetBySessionAsync(long sessionID, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
         var rows = await connection.QueryAsync<EventRow>
                    (
-                       "SELECT * FROM playthrough_events WHERE project_id = @projectID ORDER BY id",
-                       new { projectID }
+                       "SELECT * FROM playthrough_events WHERE session_id = @sessionID ORDER BY id",
+                       new { sessionID }
                    );
 
         return rows.Select(r => r.ToEvent()).ToList();
@@ -62,19 +63,6 @@ public sealed class EventRepository : IEventRepository
         return rows.Select(r => r.ToEvent()).ToList();
     }
 
-    public async Task<IReadOnlyList<PlaythroughEvent>> GetAfterAsync(long projectID, long eventID, CancellationToken cancellationToken = default)
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        var rows = await connection.QueryAsync<EventRow>
-                   (
-                       "SELECT * FROM playthrough_events WHERE project_id = @projectID AND id > @eventID ORDER BY id",
-                       new { projectID, eventID }
-                   );
-
-        return rows.Select(r => r.ToEvent()).ToList();
-    }
-
     public async Task RemoveByRoundAsync(long roundID, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
@@ -86,14 +74,14 @@ public sealed class EventRepository : IEventRepository
         );
     }
 
-    public async Task<long> GetLatestRoundIDAsync(long projectID, CancellationToken cancellationToken = default)
+    public async Task<long> GetLatestRoundIDAsync(long sessionID, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
         var result = await connection.QueryFirstOrDefaultAsync<long?>
                      (
-                         "SELECT MAX(round_id) FROM playthrough_events WHERE project_id = @projectID",
-                         new { projectID }
+                         "SELECT MAX(round_id) FROM playthrough_events WHERE session_id = @sessionID",
+                         new { sessionID }
                      );
 
         return result ?? 0;
@@ -103,6 +91,7 @@ public sealed class EventRepository : IEventRepository
     {
         public long   ID         { get; set; }
         public long   Project_ID { get; set; }
+        public long?  Session_ID { get; set; }
         public long   Round_ID   { get; set; }
         public string Type       { get; set; } = string.Empty;
         public string Data       { get; set; } = string.Empty;
@@ -126,6 +115,7 @@ public sealed class EventRepository : IEventRepository
             {
                 ID        = ID,
                 ProjectID = Project_ID,
+                SessionID = Session_ID ?? 0,
                 RoundID   = Round_ID,
                 Type      = type,
                 Data      = Data,

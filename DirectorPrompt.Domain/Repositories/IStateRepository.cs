@@ -17,26 +17,35 @@ public interface IStateRepository
 
     Task DeleteAttributeAsync(long id, CancellationToken cancellationToken = default);
 
-    Task<StateValue?> GetStateValueAsync(long attributeID, CancellationToken cancellationToken = default);
+    Task<StateValue?> GetStateValueAsync(long attributeID, long sessionID, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<StateValue>> GetAllStateValuesAsync(long projectID, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<StateValue>> GetAllStateValuesAsync(long projectID, long sessionID, CancellationToken cancellationToken = default);
 
     Task SetStateValueAsync
-        (long attributeID, string value, StateChangeSource source, string reason, long sceneID, long? roundID, CancellationToken cancellationToken = default);
+    (
+        long              attributeID,
+        long              sessionID,
+        string            value,
+        StateChangeSource source,
+        string            reason,
+        long              sceneID,
+        long?             roundID,
+        CancellationToken cancellationToken = default
+    );
 
-    Task<IReadOnlyList<CompositeItem>> GetCompositeItemsAsync(long attributeID, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<CompositeItem>> GetCompositeItemsAsync(long attributeID, long sessionID, CancellationToken cancellationToken = default);
 
-    Task<CompositeItem> AddCompositeItemAsync(CompositeItem item, CancellationToken cancellationToken = default);
+    Task<CompositeItem> AddCompositeItemAsync(CompositeItem item, long sessionID, CancellationToken cancellationToken = default);
 
     Task<CompositeItem> UpdateCompositeItemAsync(long itemID, float? delta, float? current, string reason, CancellationToken cancellationToken = default);
 
     Task RemoveCompositeItemAsync(long itemID, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<Flag>> GetFlagsAsync(long projectID, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Flag>> GetFlagsAsync(long sessionID, CancellationToken cancellationToken = default);
 
-    Task DeleteFlagAsync(long projectID, string name, CancellationToken cancellationToken = default);
+    Task DeleteFlagAsync(long sessionID, string name, CancellationToken cancellationToken = default);
 
-    Task SetFlagAsync(long projectID, string name, bool value, long? sceneID, CancellationToken cancellationToken = default);
+    Task SetFlagAsync(long projectID, long sessionID, string name, bool value, long? sceneID, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<StateChangeLog>> GetChangeLogsAsync(long attributeID, long? sceneID = null, CancellationToken cancellationToken = default);
 }

@@ -141,14 +141,14 @@ public sealed class StateRepository : IStateRepository
         await connection.ExecuteAsync("DELETE FROM state_attributes WHERE id = @id",            new { id });
     }
 
-    public async Task<StateValue?> GetStateValueAsync(long attributeID, CancellationToken cancellationToken = default)
+    public async Task<StateValue?> GetStateValueAsync(long attributeID, long sessionID, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
         var row = await connection.QueryFirstOrDefaultAsync<StateValueRow>
                   (
-                      "SELECT * FROM state_values WHERE attribute_id = @attributeID",
-                      new { attributeID }
+                      "SELECT * FROM state_values WHERE attribute_id = @attributeID AND session_id = @sessionID",
+                      new { attributeID, sessionID }
                   );
 
         if (row is null)
@@ -162,7 +162,12 @@ public sealed class StateRepository : IStateRepository
         };
     }
 
-    public async Task<IReadOnlyList<StateValue>> GetAllStateValuesAsync(long projectID, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<StateValue>> GetAllStateValuesAsync
+    (
+        long              projectID,
+        long              sessionID,
+        CancellationToken cancellationToken = default
+    )
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
@@ -171,9 +176,9 @@ public sealed class StateRepository : IStateRepository
                        """
                        SELECT sv.* FROM state_values sv
                        JOIN state_attributes sa ON sa.id = sv.attribute_id
-                       WHERE sa.project_id = @projectID
+                       WHERE sa.project_id = @projectID AND sv.session_id = @sessionID
                        """,
-                       new { projectID }
+                       new { projectID, sessionID }
                    );
 
         return rows.Select
@@ -189,6 +194,7 @@ public sealed class StateRepository : IStateRepository
     public async Task SetStateValueAsync
     (
         long              attributeID,
+        long              sessionID,
         string            value,
         StateChangeSource source,
         string            reason,
@@ -204,8 +210,8 @@ public sealed class StateRepository : IStateRepository
         {
             var oldValue = await connection.QueryFirstOrDefaultAsync<string>
                            (
-                               "SELECT value FROM state_values WHERE attribute_id = @attributeID",
-                               new { attributeID },
+                               "SELECT value FROM state_values WHERE attribute_id = @attributeID AND session_id = @sessionID",
+                               new { attributeID, sessionID },
                                transaction
                            ) ??
                            string.Empty;
@@ -213,14 +219,15 @@ public sealed class StateRepository : IStateRepository
             await connection.ExecuteAsync
             (
                 """
-                INSERT INTO state_values (attribute_id, value, updated_at)
-                VALUES (@attributeID, @value, @updatedAt)
-                ON CONFLICT(attribute_id)
+                INSERT INTO state_values (attribute_id, session_id, value, updated_at)
+                VALUES (@attributeID, @sessionID, @value, @updatedAt)
+                ON CONFLICT(attribute_id, session_id)
                 DO UPDATE SET value = @value, updated_at = @updatedAt
                 """,
                 new
                 {
                     attributeID,
+                    sessionID,
                     value,
                     updatedAt = DateTime.UtcNow.ToString("O")
                 },
@@ -230,12 +237,13 @@ public sealed class StateRepository : IStateRepository
             await connection.ExecuteAsync
             (
                 """
-                INSERT INTO state_change_logs (attribute_id, scene_id, round_id, old_value, new_value, source, reason, created_at)
-                VALUES (@attributeID, @sceneID, @roundID, @oldValue, @newValue, @source, @reason, @createdAt)
+                INSERT INTO state_change_logs (attribute_id, session_id, scene_id, round_id, old_value, new_value, source, reason, created_at)
+                VALUES (@attributeID, @sessionID, @sceneID, @roundID, @oldValue, @newValue, @source, @reason, @createdAt)
                 """,
                 new
                 {
                     attributeID,
+                    sessionID,
                     sceneID,
                     roundID,
                     oldValue,
@@ -256,33 +264,44 @@ public sealed class StateRepository : IStateRepository
         }
     }
 
-    public async Task<IReadOnlyList<CompositeItem>> GetCompositeItemsAsync(long attributeID, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<CompositeItem>> GetCompositeItemsAsync
+    (
+        long              attributeID,
+        long              sessionID,
+        CancellationToken cancellationToken = default
+    )
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
         var rows = await connection.QueryAsync<CompositeItemRow>
                    (
-                       "SELECT * FROM composite_items WHERE attribute_id = @attributeID",
-                       new { attributeID }
+                       "SELECT * FROM composite_items WHERE attribute_id = @attributeID AND session_id = @sessionID",
+                       new { attributeID, sessionID }
                    );
 
         return rows.Select(r => r.ToCompositeItem()).ToList();
     }
 
-    public async Task<CompositeItem> AddCompositeItemAsync(CompositeItem item, CancellationToken cancellationToken = default)
+    public async Task<CompositeItem> AddCompositeItemAsync
+    (
+        CompositeItem     item,
+        long              sessionID,
+        CancellationToken cancellationToken = default
+    )
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
         var id = await connection.ExecuteScalarAsync<long>
                  (
                      """
-                     INSERT INTO composite_items (attribute_id, description, current, target, status)
-                     VALUES (@attributeID, @description, @current, @target, @status);
+                     INSERT INTO composite_items (attribute_id, session_id, description, current, target, status)
+                     VALUES (@attributeID, @sessionID, @description, @current, @target, @status);
                      SELECT last_insert_rowid();
                      """,
                      new
                      {
                          attributeID = item.AttributeID,
+                         sessionID,
                          description = item.Description,
                          current     = item.Current,
                          target      = item.Target,
@@ -352,45 +371,54 @@ public sealed class StateRepository : IStateRepository
         await connection.ExecuteAsync("DELETE FROM composite_items WHERE id = @itemID", new { itemID });
     }
 
-    public async Task<IReadOnlyList<Flag>> GetFlagsAsync(long projectID, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Flag>> GetFlagsAsync(long sessionID, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
         var rows = await connection.QueryAsync<FlagRow>
                    (
-                       "SELECT * FROM flags WHERE project_id = @projectID",
-                       new { projectID }
+                       "SELECT * FROM flags WHERE session_id = @sessionID",
+                       new { sessionID }
                    );
 
         return rows.Select(r => r.ToFlag()).ToList();
     }
 
-    public async Task DeleteFlagAsync(long projectID, string name, CancellationToken cancellationToken = default)
+    public async Task DeleteFlagAsync(long sessionID, string name, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
         await connection.ExecuteAsync
         (
-            "DELETE FROM flags WHERE project_id = @projectID AND name = @name",
-            new { projectID, name }
+            "DELETE FROM flags WHERE session_id = @sessionID AND name = @name",
+            new { sessionID, name }
         );
     }
 
-    public async Task SetFlagAsync(long projectID, string name, bool value, long? sceneID, CancellationToken cancellationToken = default)
+    public async Task SetFlagAsync
+    (
+        long              projectID,
+        long              sessionID,
+        string            name,
+        bool              value,
+        long?             sceneID,
+        CancellationToken cancellationToken = default
+    )
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
         await connection.ExecuteAsync
         (
             """
-            INSERT INTO flags (project_id, name, display_name, value, set_at_scene_id)
-            VALUES (@projectID, @name, @name, @value, @sceneID)
-            ON CONFLICT(project_id, name)
+            INSERT INTO flags (project_id, session_id, name, display_name, value, set_at_scene_id)
+            VALUES (@projectID, @sessionID, @name, @name, @value, @sceneID)
+            ON CONFLICT(session_id, name)
             DO UPDATE SET value = @value, set_at_scene_id = @sceneID
             """,
             new
             {
                 projectID,
+                sessionID,
                 name,
                 value = value ?
                             1 :
@@ -472,6 +500,7 @@ public sealed class StateRepository : IStateRepository
     private sealed class StateValueRow
     {
         public long   Attribute_ID { get; set; }
+        public long   Session_ID   { get; set; }
         public string Value        { get; set; } = string.Empty;
         public string Updated_At   { get; set; } = string.Empty;
     }
@@ -480,6 +509,7 @@ public sealed class StateRepository : IStateRepository
     {
         public long   ID           { get; set; }
         public long   Attribute_ID { get; set; }
+        public long?  Session_ID   { get; set; }
         public string Description  { get; set; } = string.Empty;
         public float  Current      { get; set; }
         public float  Target       { get; set; }
@@ -506,6 +536,7 @@ public sealed class StateRepository : IStateRepository
     {
         public long   ID              { get; set; }
         public long   Project_ID      { get; set; }
+        public long?  Session_ID      { get; set; }
         public string Name            { get; set; } = string.Empty;
         public string Display_Name    { get; set; } = string.Empty;
         public int    Value           { get; set; }
@@ -516,6 +547,7 @@ public sealed class StateRepository : IStateRepository
             {
                 ID           = ID,
                 ProjectID    = Project_ID,
+                SessionID    = Session_ID ?? 0,
                 Name         = Name,
                 DisplayName  = Display_Name,
                 Value        = Value != 0,
@@ -527,6 +559,7 @@ public sealed class StateRepository : IStateRepository
     {
         public long   ID           { get; set; }
         public long   Attribute_ID { get; set; }
+        public long?  Session_ID   { get; set; }
         public long   Scene_ID     { get; set; }
         public long?  Round_ID     { get; set; }
         public string Old_Value    { get; set; } = string.Empty;

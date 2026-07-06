@@ -6,7 +6,7 @@ public interface IMemoryRepository
 {
     Task<MemoryEntry?> GetByIDAsync(long id, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<MemoryEntry>> GetByProjectAsync(long projectID, long maxTimelinePos, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<MemoryEntry>> GetBySessionAsync(long sessionID, long maxTimelinePos, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<MemoryEntry>> GetBySceneAsync(long sceneID, CancellationToken cancellationToken = default);
 

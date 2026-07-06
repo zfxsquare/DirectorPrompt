@@ -56,7 +56,7 @@ public sealed class MemoryTools
         int?                 topK
     )
     {
-        var memories = await memoryRepository.GetByProjectAsync(context.ProjectID, context.TimelinePosition);
+        var memories = await memoryRepository.GetBySessionAsync(context.SessionID, context.TimelinePosition);
 
         if (memories.Count == 0)
             return JsonSerializer.Serialize(Array.Empty<object>());
@@ -99,6 +99,7 @@ public sealed class MemoryTools
         var entry = new MemoryEntry
         {
             ProjectID   = context.ProjectID,
+            SessionID   = context.SessionID,
             SceneID     = sceneID,
             TimelinePos = context.TimelinePosition,
             Content     = content,

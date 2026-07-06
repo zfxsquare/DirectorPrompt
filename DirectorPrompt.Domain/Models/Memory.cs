@@ -6,6 +6,8 @@ public record MemoryEntry
 
     public long ProjectID { get; init; }
 
+    public long SessionID { get; init; }
+
     public long SceneID { get; init; }
 
     public long TimelinePos { get; init; }

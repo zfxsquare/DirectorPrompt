@@ -8,6 +8,8 @@ public record ActiveDirective
 
     public long ProjectID { get; init; }
 
+    public long SessionID { get; init; }
+
     public DirectiveType Type { get; init; }
 
     public string Content { get; init; } = string.Empty;

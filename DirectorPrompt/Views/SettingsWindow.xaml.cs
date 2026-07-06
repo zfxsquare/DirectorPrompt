@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using DirectorPrompt.ViewModels;
 using Wpf.Ui.Controls;
+using ListViewItem = System.Windows.Controls.ListViewItem;
 
 namespace DirectorPrompt.Views;
 
@@ -12,35 +13,31 @@ public partial class SettingsWindow : FluentWindow
     public SettingsWindow(SettingsViewModel viewModel)
     {
         this.viewModel = viewModel;
-        DataContext = viewModel;
+        DataContext    = viewModel;
         InitializeComponent();
     }
 
     private void OnNavSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (DatabasePanel is null)
-        {
             return;
-        }
 
-        if (NavList.SelectedItem is not System.Windows.Controls.ListViewItem item)
-        {
+        if (NavList.SelectedItem is not ListViewItem item)
             return;
-        }
 
         var tag = item.Tag as string;
 
-        DatabasePanel.Visibility = tag == "database" ? Visibility.Visible : Visibility.Collapsed;
-        AgentsPanel.Visibility = tag == "agents" ? Visibility.Visible : Visibility.Collapsed;
+        DatabasePanel.Visibility = tag == "database" ?
+                                       Visibility.Visible :
+                                       Visibility.Collapsed;
+        AgentsPanel.Visibility = tag == "agents" ?
+                                     Visibility.Visible :
+                                     Visibility.Collapsed;
     }
 
-    private async void OnSaveClick(object sender, RoutedEventArgs e)
-    {
+    private async void OnSaveClick(object sender, RoutedEventArgs e) =>
         await viewModel.SaveCommand.ExecuteAsync(null);
-    }
 
-    private void OnCloseClick(object sender, RoutedEventArgs e)
-    {
+    private void OnCloseClick(object sender, RoutedEventArgs e) =>
         Close();
-    }
 }

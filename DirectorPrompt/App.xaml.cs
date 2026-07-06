@@ -117,6 +117,7 @@ public partial class App : Application
         services.AddSingleton<SchemaMigrator>();
 
         services.AddSingleton<IProjectRepository, ProjectRepository>();
+        services.AddSingleton<ISessionRepository, SessionRepository>();
         services.AddSingleton<ISceneRepository, SceneRepository>();
         services.AddSingleton<IStateRepository, StateRepository>();
         services.AddSingleton<IKnowledgeRepository, KnowledgeRepository>();

@@ -24,9 +24,9 @@ public sealed class MemoryRepository : IMemoryRepository
         return row?.ToMemoryEntry();
     }
 
-    public async Task<IReadOnlyList<MemoryEntry>> GetByProjectAsync
+    public async Task<IReadOnlyList<MemoryEntry>> GetBySessionAsync
     (
-        long              projectID,
+        long              sessionID,
         long              maxTimelinePos,
         CancellationToken cancellationToken = default
     )
@@ -35,8 +35,8 @@ public sealed class MemoryRepository : IMemoryRepository
 
         var rows = await connection.QueryAsync<MemoryEntryRow>
                    (
-                       "SELECT * FROM memory_entries WHERE project_id = @projectID AND timeline_pos <= @maxTimelinePos ORDER BY timeline_pos DESC",
-                       new { projectID, maxTimelinePos }
+                       "SELECT * FROM memory_entries WHERE session_id = @sessionID AND timeline_pos <= @maxTimelinePos ORDER BY timeline_pos DESC",
+                       new { sessionID, maxTimelinePos }
                    );
 
         return rows.Select(r => r.ToMemoryEntry()).ToList();
@@ -90,13 +90,14 @@ public sealed class MemoryRepository : IMemoryRepository
         var id = await connection.ExecuteScalarAsync<long>
                  (
                      """
-                     INSERT INTO memory_entries (project_id, scene_id, timeline_pos, content, tags, related_character_ids, created_at, updated_at)
-                     VALUES (@projectID, @sceneID, @timelinePos, @content, @tags, @relatedCharacterIDs, @createdAt, @updatedAt);
+                     INSERT INTO memory_entries (project_id, session_id, scene_id, timeline_pos, content, tags, related_character_ids, created_at, updated_at)
+                     VALUES (@projectID, @sessionID, @sceneID, @timelinePos, @content, @tags, @relatedCharacterIDs, @createdAt, @updatedAt);
                      SELECT last_insert_rowid();
                      """,
                      new
                      {
                          projectID           = entry.ProjectID,
+                         sessionID           = entry.SessionID,
                          sceneID             = entry.SceneID,
                          timelinePos         = entry.TimelinePos,
                          content             = entry.Content,
@@ -171,6 +172,13 @@ public sealed class MemoryRepository : IMemoryRepository
                             transaction
                         );
 
+        var sessionID = await connection.QueryFirstAsync<long>
+                        (
+                            "SELECT session_id FROM memory_entries WHERE id = @firstID",
+                            new { firstID = memoryIDs[0] },
+                            transaction
+                        );
+
         var timelinePos = await connection.QueryFirstAsync<long>
                           (
                               "SELECT MAX(timeline_pos) FROM memory_entries WHERE id IN @ids",
@@ -181,13 +189,14 @@ public sealed class MemoryRepository : IMemoryRepository
         var newID = await connection.ExecuteScalarAsync<long>
                     (
                         """
-                        INSERT INTO memory_entries (project_id, scene_id, timeline_pos, content, tags, related_character_ids, created_at, updated_at)
-                        VALUES (@projectID, @sceneID, @timelinePos, @content, @tags, @relatedCharacterIDs, @createdAt, @updatedAt);
+                        INSERT INTO memory_entries (project_id, session_id, scene_id, timeline_pos, content, tags, related_character_ids, created_at, updated_at)
+                        VALUES (@projectID, @sessionID, @sceneID, @timelinePos, @content, @tags, @relatedCharacterIDs, @createdAt, @updatedAt);
                         SELECT last_insert_rowid();
                         """,
                         new
                         {
                             projectID,
+                            sessionID,
                             sceneID,
                             timelinePos,
                             content,
@@ -212,6 +221,7 @@ public sealed class MemoryRepository : IMemoryRepository
         {
             ID                  = newID,
             ProjectID           = projectID,
+            SessionID           = sessionID,
             SceneID             = sceneID,
             TimelinePos         = timelinePos,
             Content             = content,
@@ -233,6 +243,7 @@ public sealed class MemoryRepository : IMemoryRepository
     {
         public long   ID                    { get; set; }
         public long   Project_ID            { get; set; }
+        public long?  Session_ID            { get; set; }
         public long   Scene_ID              { get; set; }
         public long   Timeline_Pos          { get; set; }
         public string Content               { get; set; } = string.Empty;
@@ -246,6 +257,7 @@ public sealed class MemoryRepository : IMemoryRepository
             {
                 ID                  = ID,
                 ProjectID           = Project_ID,
+                SessionID           = Session_ID ?? 0,
                 SceneID             = Scene_ID,
                 TimelinePos         = Timeline_Pos,
                 Content             = Content,

@@ -6,6 +6,8 @@ public record StateSnapshot
 
     public long ProjectID { get; init; }
 
+    public long SessionID { get; init; }
+
     public long RoundID { get; init; }
 
     public string GlobalState { get; init; } = "{}";

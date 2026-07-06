@@ -6,6 +6,8 @@ public record CharacterRelation
 
     public long ProjectID { get; init; }
 
+    public long SessionID { get; init; }
+
     public long SourceCharacterID { get; init; }
 
     public long TargetCharacterID { get; init; }

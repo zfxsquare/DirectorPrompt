@@ -12,7 +12,7 @@ public sealed class DirectiveRepository : IDirectiveRepository
     public DirectiveRepository(SqliteConnectionFactory connectionFactory) =>
         this.connectionFactory = connectionFactory;
 
-    public async Task<IReadOnlyList<ActiveDirective>> GetActiveAsync(long projectID, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ActiveDirective>> GetActiveAsync(long sessionID, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
@@ -20,11 +20,11 @@ public sealed class DirectiveRepository : IDirectiveRepository
                    (
                        """
                        SELECT * FROM active_directives
-                       WHERE project_id = @projectID
+                       WHERE session_id = @sessionID
                          AND (ttl IS NULL OR ttl > 0)
                        ORDER BY id
                        """,
-                       new { projectID }
+                       new { sessionID }
                    );
 
         return rows.Select(r => r.ToActiveDirective()).ToList();
@@ -37,13 +37,14 @@ public sealed class DirectiveRepository : IDirectiveRepository
         var id = await connection.ExecuteScalarAsync<long>
                  (
                      """
-                     INSERT INTO active_directives (project_id, type, content, ttl, created_at)
-                     VALUES (@projectID, @type, @content, @ttl, @createdAt);
+                     INSERT INTO active_directives (project_id, session_id, type, content, ttl, created_at)
+                     VALUES (@projectID, @sessionID, @type, @content, @ttl, @createdAt);
                      SELECT last_insert_rowid();
                      """,
                      new
                      {
                          projectID = directive.ProjectID,
+                         sessionID = directive.SessionID,
                          type      = directive.Type.ToString().ToLowerInvariant(),
                          content   = directive.Content,
                          ttl       = directive.TTL,
@@ -61,22 +62,22 @@ public sealed class DirectiveRepository : IDirectiveRepository
         await connection.ExecuteAsync("DELETE FROM active_directives WHERE id = @id", new { id });
     }
 
-    public async Task<IReadOnlyList<ActiveDirective>> DecrementTTLAsync(long projectID, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ActiveDirective>> DecrementTTLAsync(long sessionID, CancellationToken cancellationToken = default)
     {
         await using var connection  = await connectionFactory.CreateAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
         await connection.ExecuteAsync
         (
-            "UPDATE active_directives SET ttl = ttl - 1 WHERE project_id = @projectID AND ttl IS NOT NULL",
-            new { projectID },
+            "UPDATE active_directives SET ttl = ttl - 1 WHERE session_id = @sessionID AND ttl IS NOT NULL",
+            new { sessionID },
             transaction
         );
 
         await connection.ExecuteAsync
         (
-            "DELETE FROM active_directives WHERE project_id = @projectID AND ttl IS NOT NULL AND ttl <= 0",
-            new { projectID },
+            "DELETE FROM active_directives WHERE session_id = @sessionID AND ttl IS NOT NULL AND ttl <= 0",
+            new { sessionID },
             transaction
         );
 
@@ -84,11 +85,11 @@ public sealed class DirectiveRepository : IDirectiveRepository
                    (
                        """
                        SELECT * FROM active_directives
-                       WHERE project_id = @projectID
+                       WHERE session_id = @sessionID
                          AND (ttl IS NULL OR ttl > 0)
                        ORDER BY id
                        """,
-                       new { projectID },
+                       new { sessionID },
                        transaction
                    );
 
@@ -101,6 +102,7 @@ public sealed class DirectiveRepository : IDirectiveRepository
     {
         public long   ID         { get; set; }
         public long   Project_ID { get; set; }
+        public long?  Session_ID { get; set; }
         public string Type       { get; set; } = "plot";
         public string Content    { get; set; } = string.Empty;
         public int?   TTL        { get; set; }
@@ -111,6 +113,7 @@ public sealed class DirectiveRepository : IDirectiveRepository
             {
                 ID        = ID,
                 ProjectID = Project_ID,
+                SessionID = Session_ID ?? 0,
                 Type = Type switch
                 {
                     "tone"                 => DirectiveType.Tone,

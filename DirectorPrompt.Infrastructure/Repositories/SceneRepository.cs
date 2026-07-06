@@ -25,40 +25,40 @@ public sealed class SceneRepository : ISceneRepository
         return row?.ToScene();
     }
 
-    public async Task<IReadOnlyList<Scene>> GetByProjectAsync(long projectID, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Scene>> GetBySessionAsync(long sessionID, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
         var rows = await connection.QueryAsync<SceneRow>
                    (
-                       "SELECT * FROM scenes WHERE project_id = @projectID ORDER BY id",
-                       new { projectID }
+                       "SELECT * FROM scenes WHERE session_id = @sessionID ORDER BY id",
+                       new { sessionID }
                    );
 
         return rows.Select(r => r.ToScene()).ToList();
     }
 
-    public async Task<Scene?> GetActiveSceneAsync(long projectID, CancellationToken cancellationToken = default)
+    public async Task<Scene?> GetActiveSceneAsync(long sessionID, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
         var row = await connection.QueryFirstOrDefaultAsync<SceneRow>
                   (
-                      "SELECT * FROM scenes WHERE project_id = @projectID AND status = 'active' ORDER BY id DESC LIMIT 1",
-                      new { projectID }
+                      "SELECT * FROM scenes WHERE session_id = @sessionID AND status = 'active' ORDER BY id DESC LIMIT 1",
+                      new { sessionID }
                   );
 
         return row?.ToScene();
     }
 
-    public async Task<IReadOnlyList<Scene>> GetOrderedByTimelineAsync(long projectID, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Scene>> GetOrderedByTimelineAsync(long sessionID, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
         var rows = await connection.QueryAsync<SceneRow>
                    (
-                       "SELECT * FROM scenes WHERE project_id = @projectID ORDER BY timeline_position",
-                       new { projectID }
+                       "SELECT * FROM scenes WHERE session_id = @sessionID ORDER BY timeline_position",
+                       new { sessionID }
                    );
 
         return rows.Select(r => r.ToScene()).ToList();
@@ -71,13 +71,14 @@ public sealed class SceneRepository : ISceneRepository
         var id = await connection.ExecuteScalarAsync<long>
                  (
                      """
-                     INSERT INTO scenes (project_id, timeline_position, time_label, summary, status)
-                     VALUES (@projectID, @timelinePosition, @timeLabel, @summary, @status);
+                     INSERT INTO scenes (project_id, session_id, timeline_position, time_label, summary, status)
+                     VALUES (@projectID, @sessionID, @timelinePosition, @timeLabel, @summary, @status);
                      SELECT last_insert_rowid();
                      """,
                      new
                      {
                          projectID        = scene.ProjectID,
+                         sessionID        = scene.SessionID,
                          timelinePosition = scene.TimelinePosition,
                          timeLabel        = scene.TimeLabel,
                          summary          = scene.Summary,
@@ -115,6 +116,7 @@ public sealed class SceneRepository : ISceneRepository
     {
         public long    ID                { get; set; }
         public long    Project_ID        { get; set; }
+        public long?   Session_ID        { get; set; }
         public long    Timeline_Position { get; set; }
         public string  Time_Label        { get; set; } = string.Empty;
         public string? Summary           { get; set; }
@@ -134,6 +136,7 @@ public sealed class SceneRepository : ISceneRepository
             {
                 ID               = ID,
                 ProjectID        = Project_ID,
+                SessionID        = Session_ID ?? 0,
                 TimelinePosition = Timeline_Position,
                 TimeLabel        = Time_Label,
                 Summary          = Summary,

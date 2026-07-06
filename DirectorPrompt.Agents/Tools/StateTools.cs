@@ -68,7 +68,7 @@ public sealed class StateTools
         if (attr is null)
             return JsonSerializer.Serialize(new { error = $"状态属性 {attribute} 不存在" });
 
-        var value = await stateRepository.GetStateValueAsync(attr.ID);
+        var value = await stateRepository.GetStateValueAsync(attr.ID, context.SessionID);
 
         return JsonSerializer.Serialize
         (
@@ -88,7 +88,7 @@ public sealed class StateTools
 
         foreach (var attr in attributes)
         {
-            var value = await stateRepository.GetStateValueAsync(attr.ID);
+            var value = await stateRepository.GetStateValueAsync(attr.ID, context.SessionID);
             result.Add
             (
                 new
@@ -104,7 +104,7 @@ public sealed class StateTools
 
     private async Task<string> GetFlagsAsync(ToolExecutionContext context)
     {
-        var flags = await stateRepository.GetFlagsAsync(context.ProjectID);
+        var flags = await stateRepository.GetFlagsAsync(context.SessionID);
         var result = flags.Select
         (f => new
             {
@@ -124,7 +124,7 @@ public sealed class StateTools
         if (attr is null)
             return JsonSerializer.Serialize(new { error = $"状态属性 {attribute} 不存在" });
 
-        var items = await stateRepository.GetCompositeItemsAsync(attr.ID);
+        var items = await stateRepository.GetCompositeItemsAsync(attr.ID, context.SessionID);
         var result = items.Select
         (i => new
             {
@@ -153,13 +153,14 @@ public sealed class StateTools
         if (attr is null)
             return JsonSerializer.Serialize(new { error = $"状态属性 {attribute} 不存在" });
 
-        var currentValue = await stateRepository.GetStateValueAsync(attr.ID);
+        var currentValue = await stateRepository.GetStateValueAsync(attr.ID, context.SessionID);
         var currentNum   = double.Parse(currentValue?.Value ?? "0");
         var newValue     = currentNum + delta;
 
         await stateRepository.SetStateValueAsync
         (
             attr.ID,
+            context.SessionID,
             newValue.ToString(),
             StateChangeSource.StateAgent,
             reason,
@@ -191,11 +192,12 @@ public sealed class StateTools
         if (attr is null)
             return JsonSerializer.Serialize(new { error = $"状态属性 {attribute} 不存在" });
 
-        var oldValue = await stateRepository.GetStateValueAsync(attr.ID);
+        var oldValue = await stateRepository.GetStateValueAsync(attr.ID, context.SessionID);
 
         await stateRepository.SetStateValueAsync
         (
             attr.ID,
+            context.SessionID,
             value,
             StateChangeSource.StateAgent,
             reason,
@@ -215,7 +217,7 @@ public sealed class StateTools
 
     private async Task<string> SetFlagAsync(ToolExecutionContext context, string name, string reason)
     {
-        await stateRepository.SetFlagAsync(context.ProjectID, name, true, context.SceneID);
+        await stateRepository.SetFlagAsync(context.ProjectID, context.SessionID, name, true, context.SceneID);
 
         return JsonSerializer.Serialize(new { name, value = true });
     }

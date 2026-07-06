@@ -8,6 +8,8 @@ public record PlaythroughEvent
 
     public long ProjectID { get; init; }
 
+    public long SessionID { get; init; }
+
     public long RoundID { get; init; }
 
     public EventType Type { get; init; }

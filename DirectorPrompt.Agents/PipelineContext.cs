@@ -8,6 +8,8 @@ public sealed class PipelineContext
 
     public required long RoundID { get; init; }
 
+    public long SessionID { get; init; }
+
     public long? CurrentSceneID { get; init; }
 
     public long CurrentTimelinePosition { get; init; }
@@ -32,14 +34,14 @@ public sealed class PipelineContext
 
     public int AuditRetryCount { get; set; }
 
-    /// <summary>
-    ///     流式回调, 参数为 (narrativeText, thinkingText), 表示当前累计的叙事文本和思考文本
-    /// </summary>
     public Action<string, string>? OnStreamingUpdate { get; set; }
+
+    public Action<PipelineStageUpdate>? OnStageUpdate { get; set; }
 
     public ToolExecutionContext ToolContext => new
     (
         DirectiveBatch.ProjectID,
+        SessionID,
         CurrentSceneID,
         CurrentTimelinePosition,
         RoundID
@@ -51,4 +53,11 @@ public record ChatHistoryEntry
     long   RoundID,
     string DirectorInput,
     string NarrativeOutput
+);
+
+public record PipelineStageUpdate
+(
+    string  Stage,
+    string  Status,
+    string? Detail = null
 );

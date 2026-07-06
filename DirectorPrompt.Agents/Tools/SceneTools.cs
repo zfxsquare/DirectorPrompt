@@ -24,7 +24,7 @@ public sealed class SceneTools
         (
             () => QuerySceneAsync(context),
             "query_scene",
-            "查询当前项目的所有场景列表, 返回每个场景的 ID、timelinePosition、timeLabel、status"
+            "查询当前对话的所有场景列表, 返回每个场景的 ID、timelinePosition、timeLabel、status"
         ),
         AIFunctionFactory.Create
         (
@@ -37,7 +37,7 @@ public sealed class SceneTools
 
     private async Task<string> QuerySceneAsync(ToolExecutionContext context)
     {
-        var scenes = await sceneRepository.GetOrderedByTimelineAsync(context.ProjectID);
+        var scenes = await sceneRepository.GetOrderedByTimelineAsync(context.SessionID);
         var result = scenes.Select
         (s => new
             {
@@ -62,7 +62,7 @@ public sealed class SceneTools
         if (string.IsNullOrWhiteSpace(timeLabel))
             return JsonSerializer.Serialize(new { error = "timeLabel 不能为空" });
 
-        var existingScenes = await sceneRepository.GetOrderedByTimelineAsync(context.ProjectID);
+        var existingScenes = await sceneRepository.GetOrderedByTimelineAsync(context.SessionID);
 
         long position;
 
@@ -78,6 +78,7 @@ public sealed class SceneTools
         var scene = new Scene
         {
             ProjectID        = context.ProjectID,
+            SessionID        = context.SessionID,
             TimelinePosition = position,
             TimeLabel        = timeLabel,
             Status           = SceneStatus.Active

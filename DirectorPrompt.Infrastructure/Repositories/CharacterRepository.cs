@@ -25,27 +25,27 @@ public sealed class CharacterRepository : ICharacterRepository
         return row?.ToCharacter();
     }
 
-    public async Task<Character?> GetByNameAsync(long projectID, string name, CancellationToken cancellationToken = default)
+    public async Task<Character?> GetByNameAsync(long sessionID, string name, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
         var row = await connection.QueryFirstOrDefaultAsync<CharacterRow>
                   (
-                      "SELECT * FROM characters WHERE project_id = @projectID AND name = @name",
-                      new { projectID, name }
+                      "SELECT * FROM characters WHERE session_id = @sessionID AND name = @name",
+                      new { sessionID, name }
                   );
 
         return row?.ToCharacter();
     }
 
-    public async Task<IReadOnlyList<Character>> GetByProjectAsync(long projectID, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Character>> GetBySessionAsync(long sessionID, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
         var rows = await connection.QueryAsync<CharacterRow>
                    (
-                       "SELECT * FROM characters WHERE project_id = @projectID ORDER BY id",
-                       new { projectID }
+                       "SELECT * FROM characters WHERE session_id = @sessionID ORDER BY id",
+                       new { sessionID }
                    );
 
         return rows.Select(r => r.ToCharacter()).ToList();
@@ -78,13 +78,14 @@ public sealed class CharacterRepository : ICharacterRepository
         var id = await connection.ExecuteScalarAsync<long>
                  (
                      """
-                     INSERT INTO characters (project_id, name, description, category_ids, status, created_at, updated_at)
-                     VALUES (@projectID, @name, @description, @categoryIDs, @status, @createdAt, @updatedAt);
+                     INSERT INTO characters (project_id, session_id, name, description, category_ids, status, created_at, updated_at)
+                     VALUES (@projectID, @sessionID, @name, @description, @categoryIDs, @status, @createdAt, @updatedAt);
                      SELECT last_insert_rowid();
                      """,
                      new
                      {
                          projectID   = character.ProjectID,
+                         sessionID   = character.SessionID,
                          name        = character.Name,
                          description = character.Description,
                          categoryIDs = JsonHelper.Serialize(character.CategoryIDs),
@@ -197,14 +198,14 @@ public sealed class CharacterRepository : ICharacterRepository
         );
     }
 
-    public async Task<IReadOnlyList<CharacterRelation>> GetRelationsAsync(long projectID, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<CharacterRelation>> GetRelationsAsync(long sessionID, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
         var rows = await connection.QueryAsync<CharacterRelationRow>
                    (
-                       "SELECT * FROM character_relations WHERE project_id = @projectID ORDER BY id",
-                       new { projectID }
+                       "SELECT * FROM character_relations WHERE session_id = @sessionID ORDER BY id",
+                       new { sessionID }
                    );
 
         return rows.Select(r => r.ToCharacterRelation()).ToList();
@@ -225,7 +226,7 @@ public sealed class CharacterRepository : ICharacterRepository
 
     public async Task<CharacterRelation> SetRelationAsync
     (
-        long                 projectID,
+        long                 sessionID,
         long                 sourceCharacterID,
         long                 targetCharacterID,
         string               relationType,
@@ -245,11 +246,11 @@ public sealed class CharacterRepository : ICharacterRepository
                        (
                            """
                            SELECT * FROM character_relations
-                           WHERE project_id = @projectID
+                           WHERE session_id = @sessionID
                              AND source_character_id = @sourceID
                              AND target_character_id = @targetID
                            """,
-                           new { projectID, sourceID = sourceCharacterID, targetID = targetCharacterID },
+                           new { sessionID, sourceID = sourceCharacterID, targetID = targetCharacterID },
                            transaction
                        );
 
@@ -302,17 +303,25 @@ public sealed class CharacterRepository : ICharacterRepository
         }
         else
         {
+            var projectID = await connection.QueryFirstAsync<long>
+                            (
+                                "SELECT project_id FROM characters WHERE id = @sourceID",
+                                new { sourceID = sourceCharacterID },
+                                transaction
+                            );
+
             relationID = await connection.ExecuteScalarAsync<long>
                          (
                              """
                              INSERT INTO character_relations
-                                 (project_id, source_character_id, target_character_id, relation_type, description, created_at, updated_at)
-                             VALUES (@projectID, @sourceID, @targetID, @relationType, @description, @createdAt, @updatedAt);
+                                 (project_id, session_id, source_character_id, target_character_id, relation_type, description, created_at, updated_at)
+                             VALUES (@projectID, @sessionID, @sourceID, @targetID, @relationType, @description, @createdAt, @updatedAt);
                              SELECT last_insert_rowid();
                              """,
                              new
                              {
                                  projectID,
+                                 sessionID,
                                  sourceID = sourceCharacterID,
                                  targetID = targetCharacterID,
                                  relationType,
@@ -346,10 +355,17 @@ public sealed class CharacterRepository : ICharacterRepository
 
         await transaction.CommitAsync(cancellationToken);
 
+        var resultProjectID = await connection.QueryFirstAsync<long>
+                              (
+                                  "SELECT project_id FROM characters WHERE id = @sourceID",
+                                  new { sourceID = sourceCharacterID }
+                              );
+
         return new CharacterRelation
         {
             ID                = relationID,
-            ProjectID         = projectID,
+            ProjectID         = resultProjectID,
+            SessionID         = sessionID,
             SourceCharacterID = sourceCharacterID,
             TargetCharacterID = targetCharacterID,
             RelationType      = relationType,
@@ -494,10 +510,34 @@ public sealed class CharacterRepository : ICharacterRepository
         );
     }
 
+    public async Task CloneProjectCharactersToSessionAsync
+    (
+        long              projectID,
+        long              sessionID,
+        CancellationToken cancellationToken = default
+    )
+    {
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        var now = DateTime.UtcNow.ToString("O");
+
+        await connection.ExecuteAsync
+        (
+            """
+            INSERT INTO characters (project_id, session_id, name, description, category_ids, status, created_at, updated_at)
+            SELECT project_id, @sessionID, name, description, category_ids, status, @now, @now
+            FROM characters
+            WHERE project_id = @projectID AND session_id IS NULL
+            """,
+            new { projectID, sessionID, now }
+        );
+    }
+
     private sealed class CharacterRow
     {
         public long   ID           { get; set; }
         public long   Project_ID   { get; set; }
+        public long?  Session_ID   { get; set; }
         public string Name         { get; set; } = string.Empty;
         public string Description  { get; set; } = string.Empty;
         public string Category_IDs { get; set; } = "[]";
@@ -510,6 +550,7 @@ public sealed class CharacterRepository : ICharacterRepository
             {
                 ID          = ID,
                 ProjectID   = Project_ID,
+                SessionID   = Session_ID ?? 0,
                 Name        = Name,
                 Description = Description,
                 CategoryIDs = JsonHelper.DeserializeInt64Array(Category_IDs),
@@ -547,6 +588,7 @@ public sealed class CharacterRepository : ICharacterRepository
     {
         public long    ID                  { get; set; }
         public long    Project_ID          { get; set; }
+        public long?   Session_ID          { get; set; }
         public long    Source_Character_ID { get; set; }
         public long    Target_Character_ID { get; set; }
         public string  Relation_Type       { get; set; } = string.Empty;
@@ -560,6 +602,7 @@ public sealed class CharacterRepository : ICharacterRepository
             {
                 ID                = ID,
                 ProjectID         = Project_ID,
+                SessionID         = Session_ID ?? 0,
                 SourceCharacterID = Source_Character_ID,
                 TargetCharacterID = Target_Character_ID,
                 RelationType      = Relation_Type,

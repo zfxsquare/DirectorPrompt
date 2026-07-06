@@ -12,8 +12,8 @@ public partial class ProjectEditWindow : FluentWindow
 
     public ProjectEditWindow(ProjectEditViewModel viewModel)
     {
-        this.ViewModel = viewModel;
-        DataContext    = viewModel;
+        ViewModel   = viewModel;
+        DataContext = viewModel;
         InitializeComponent();
     }
 

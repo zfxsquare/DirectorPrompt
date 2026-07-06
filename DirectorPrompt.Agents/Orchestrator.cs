@@ -23,6 +23,7 @@ public sealed class Orchestrator
     private readonly IEventRepository         eventRepository;
     private readonly IStateSnapshotRepository snapshotRepository;
     private readonly IProjectRepository       projectRepository;
+    private readonly ISessionRepository       sessionRepository;
     private readonly IKnowledgeRepository     knowledgeRepository;
     private readonly IMemoryRepository        memoryRepository;
     private readonly IEmbeddingService        embeddingService;
@@ -51,6 +52,7 @@ public sealed class Orchestrator
         IEventRepository         eventRepository,
         IStateSnapshotRepository snapshotRepository,
         IProjectRepository       projectRepository,
+        ISessionRepository       sessionRepository,
         IKnowledgeRepository     knowledgeRepository,
         IMemoryRepository        memoryRepository,
         IEmbeddingService        embeddingService,
@@ -66,6 +68,7 @@ public sealed class Orchestrator
         this.eventRepository     = eventRepository;
         this.snapshotRepository  = snapshotRepository;
         this.projectRepository   = projectRepository;
+        this.sessionRepository   = sessionRepository;
         this.knowledgeRepository = knowledgeRepository;
         this.memoryRepository    = memoryRepository;
         this.embeddingService    = embeddingService;
@@ -122,9 +125,11 @@ public sealed class Orchestrator
 
     public async Task<NarrationResult> ProcessBatchAsync
     (
-        DirectiveBatch          batch,
-        Action<string, string>? onStreamingUpdate = null,
-        CancellationToken       cancellationToken = default
+        DirectiveBatch               batch,
+        long                         sessionID,
+        Action<string, string>?      onStreamingUpdate = null,
+        Action<PipelineStageUpdate>? onStageUpdate     = null,
+        CancellationToken            cancellationToken = default
     )
     {
         var project = await projectRepository.GetByIDAsync(batch.ProjectID, cancellationToken);
@@ -132,15 +137,21 @@ public sealed class Orchestrator
         if (project is null)
             throw new ArgumentException($"项目 {batch.ProjectID} 不存在");
 
-        var roundID          = await eventRepository.GetLatestRoundIDAsync(batch.ProjectID, cancellationToken) + 1;
-        var activeScene      = await sceneRepository.GetActiveSceneAsync(batch.ProjectID, cancellationToken);
+        var session = await sessionRepository.GetByIDAsync(sessionID, cancellationToken);
+
+        if (session is null)
+            throw new ArgumentException($"对话 {sessionID} 不存在");
+
+        var roundID          = await eventRepository.GetLatestRoundIDAsync(sessionID, cancellationToken) + 1;
+        var activeScene      = await sceneRepository.GetActiveSceneAsync(sessionID, cancellationToken);
         var timelinePosition = activeScene?.TimelinePosition ?? 0;
 
         Log.Information
         (
-            "Orchestrator 开始处理批次: 项目={ProjectID} ({ProjectName}), 轮次={RoundID}, 场景={SceneID}, 指令数={DirectiveCount}",
+            "Orchestrator 开始处理批次: 项目={ProjectID} ({ProjectName}), 对话={SessionID}, 轮次={RoundID}, 场景={SceneID}, 指令数={DirectiveCount}",
             batch.ProjectID,
             project.Name,
+            sessionID,
             roundID,
             activeScene?.ID,
             batch.Directives.Count
@@ -149,9 +160,11 @@ public sealed class Orchestrator
         foreach (var d in batch.Directives)
             Log.Information("  指令 #{Order} [{Type}] {Content}", d.Order, d.Type, d.Content);
 
-        await ProcessDirectivesAsync(batch, roundID, activeScene, cancellationToken);
+        onStageUpdate?.Invoke(new PipelineStageUpdate("指令处理", "进行中"));
+        await ProcessDirectivesAsync(batch, sessionID, activeScene, cancellationToken);
+        onStageUpdate?.Invoke(new PipelineStageUpdate("指令处理", "完成"));
 
-        var history = await BuildHistoryAsync(batch.ProjectID, roundID, cancellationToken);
+        var history = await BuildHistoryAsync(sessionID, roundID, cancellationToken);
 
         Log.Information("历史叙事注入: {HistoryCount} 轮", history.Count);
 
@@ -159,16 +172,38 @@ public sealed class Orchestrator
         {
             DirectiveBatch          = batch,
             RoundID                 = roundID,
+            SessionID               = sessionID,
             CurrentSceneID          = activeScene?.ID,
             CurrentTimelinePosition = timelinePosition,
             Project                 = project,
             History                 = history,
-            OnStreamingUpdate       = onStreamingUpdate
+            OnStreamingUpdate       = onStreamingUpdate,
+            OnStageUpdate           = onStageUpdate
         };
 
+        onStageUpdate?.Invoke(new PipelineStageUpdate("检索", "进行中"));
         await retrievalStage.ExecuteAsync(context, cancellationToken);
+        onStageUpdate?.Invoke
+        (
+            new PipelineStageUpdate
+            (
+                "检索",
+                "完成",
+                $"知识长度={context.KnowledgeContext?.Length ?? 0}, 记忆长度={context.MemoryContext?.Length ?? 0}"
+            )
+        );
 
+        onStageUpdate?.Invoke(new PipelineStageUpdate("生成", "进行中"));
         await generationStage.ExecuteAsync(context, cancellationToken);
+        onStageUpdate?.Invoke
+        (
+            new PipelineStageUpdate
+            (
+                "生成",
+                "完成",
+                $"叙事长度={context.NarrativeOutput?.Length ?? 0}"
+            )
+        );
 
         Log.Information
         (
@@ -183,6 +218,7 @@ public sealed class Orchestrator
         await RecordEventAsync
         (
             batch.ProjectID,
+            sessionID,
             roundID,
             EventType.DirectorInput,
             JsonSerializer.Serialize
@@ -202,22 +238,40 @@ public sealed class Orchestrator
         await RecordEventAsync
         (
             batch.ProjectID,
+            sessionID,
             roundID,
             EventType.NarrativeOutput,
             context.NarrativeOutput ?? string.Empty,
             cancellationToken
         );
 
+        onStageUpdate?.Invoke(new PipelineStageUpdate("审计", "进行中"));
         await RunAuditLoopAsync(context, cancellationToken);
+        onStageUpdate?.Invoke
+        (
+            new PipelineStageUpdate
+            (
+                "审计",
+                "完成",
+                context.AuditPassed ?
+                    "通过" :
+                    $"违规数={context.Violations.Count}"
+            )
+        );
 
         if (context.AuditPassed)
+        {
+            onStageUpdate?.Invoke(new PipelineStageUpdate("后处理", "进行中"));
             await postProcessingStage.ExecuteAsync(context, cancellationToken);
+            onStageUpdate?.Invoke(new PipelineStageUpdate("后处理", "完成"));
+        }
 
-        await directiveRepository.DecrementTTLAsync(batch.ProjectID, cancellationToken);
+        await directiveRepository.DecrementTTLAsync(sessionID, cancellationToken);
 
         Log.Information
         (
-            "Orchestrator 批次处理完成: 轮次={RoundID}, 审计通过={Passed}, 违规数={Violations}, 叙事长度={NarrativeLen}",
+            "Orchestrator 批次处理完成: 对话={SessionID}, 轮次={RoundID}, 审计通过={Passed}, 违规数={Violations}, 叙事长度={NarrativeLen}",
+            sessionID,
             roundID,
             context.AuditPassed,
             context.Violations.Count,
@@ -234,53 +288,33 @@ public sealed class Orchestrator
         );
     }
 
-    public async Task DeleteRoundAsync(long projectID, long roundID, CancellationToken cancellationToken = default)
+    public async Task DeleteRoundAsync(long sessionID, long roundID, CancellationToken cancellationToken = default)
     {
-        Log.Information("删除轮次: 项目={ProjectID}, 轮次={RoundID}", projectID, roundID);
+        Log.Information("删除轮次: 对话={SessionID}, 轮次={RoundID}", sessionID, roundID);
         await eventRepository.RemoveByRoundAsync(roundID, cancellationToken);
     }
 
     public async Task<NarrationResult> RewriteAsync
     (
-        DirectiveBatch          batch,
-        Action<string, string>? onStreamingUpdate = null,
-        CancellationToken       cancellationToken = default
+        DirectiveBatch               batch,
+        long                         sessionID,
+        Action<string, string>?      onStreamingUpdate = null,
+        Action<PipelineStageUpdate>? onStageUpdate     = null,
+        CancellationToken            cancellationToken = default
     )
     {
-        var latestRound = await eventRepository.GetLatestRoundIDAsync(batch.ProjectID, cancellationToken);
+        var latestRound = await eventRepository.GetLatestRoundIDAsync(sessionID, cancellationToken);
 
         if (latestRound > 0)
             await eventRepository.RemoveByRoundAsync(latestRound, cancellationToken);
 
-        return await ProcessBatchAsync(batch, onStreamingUpdate, cancellationToken);
-    }
-
-    public async Task<NarrationResult> CorrectAsync
-    (
-        DirectiveBatch    originalBatch,
-        string            correctionGuidance,
-        CancellationToken cancellationToken = default
-    )
-    {
-        var latestRound       = await eventRepository.GetLatestRoundIDAsync(originalBatch.ProjectID, cancellationToken);
-        var events            = await eventRepository.GetByRoundAsync(latestRound, cancellationToken);
-        var narrativeEvent    = events.FirstOrDefault(e => e.Type == EventType.NarrativeOutput);
-        var originalNarrative = narrativeEvent?.Data ?? string.Empty;
-
-        var correctedDirectives = originalBatch.Directives.ToList();
-        correctedDirectives.Add(new DirectiveItem(DirectiveType.Plot, correctionGuidance, correctedDirectives.Count + 1));
-
-        var correctedBatch = new DirectiveBatch(originalBatch.ProjectID, correctedDirectives);
-
-        await eventRepository.RemoveByRoundAsync(latestRound, cancellationToken);
-
-        return await ProcessBatchAsync(correctedBatch, null, cancellationToken);
+        return await ProcessBatchAsync(batch, sessionID, onStreamingUpdate, onStageUpdate, cancellationToken);
     }
 
     private async Task ProcessDirectivesAsync
     (
         DirectiveBatch    batch,
-        long              roundID,
+        long              sessionID,
         Scene?            activeScene,
         CancellationToken cancellationToken
     )
@@ -306,6 +340,7 @@ public sealed class Orchestrator
                     new ActiveDirective
                     {
                         ProjectID = batch.ProjectID,
+                        SessionID = sessionID,
                         Type      = directive.Type,
                         Content   = directive.Content,
                         TTL       = ttl,
@@ -316,13 +351,14 @@ public sealed class Orchestrator
             }
 
             if (directive.Type == DirectiveType.SceneChange)
-                await CreateSceneViaAgentAsync(batch.ProjectID, directive.Content, activeScene, cancellationToken);
+                await CreateSceneViaAgentAsync(batch.ProjectID, sessionID, directive.Content, activeScene, cancellationToken);
         }
     }
 
     private async Task CreateSceneViaAgentAsync
     (
         long              projectID,
+        long              sessionID,
         string            description,
         Scene?            currentScene,
         CancellationToken cancellationToken
@@ -346,6 +382,7 @@ public sealed class Orchestrator
         var toolContext = new ToolExecutionContext
         (
             projectID,
+            sessionID,
             currentScene?.ID,
             currentScene?.TimelinePosition ?? 0,
             0
@@ -415,12 +452,12 @@ public sealed class Orchestrator
 
     private async Task<IReadOnlyList<ChatHistoryEntry>> BuildHistoryAsync
     (
-        long              projectID,
+        long              sessionID,
         long              currentRoundID,
         CancellationToken cancellationToken
     )
     {
-        var events = await eventRepository.GetByProjectAsync(projectID, cancellationToken);
+        var events = await eventRepository.GetBySessionAsync(sessionID, cancellationToken);
 
         var directorEvents = events
                              .Where(e => e.Type == EventType.DirectorInput)
@@ -492,6 +529,7 @@ public sealed class Orchestrator
     private async Task RecordEventAsync
     (
         long              projectID,
+        long              sessionID,
         long              roundID,
         EventType         type,
         string            data,
@@ -500,13 +538,15 @@ public sealed class Orchestrator
     {
         Log.Debug
         (
-            "记录事件: 类型={Type}, 轮次={RoundID}, 数据长度={DataLength}",
+            "记录事件: 类型={Type}, 对话={SessionID}, 轮次={RoundID}, 数据长度={DataLength}",
             type,
+            sessionID,
             roundID,
             data.Length
         );
 
         if (type == EventType.NarrativeOutput && data.Length > 0)
+        {
             Log.Debug
             (
                 "  事件数据 (NarrativeOutput): {Data}",
@@ -514,12 +554,14 @@ public sealed class Orchestrator
                     data[..500] + "..." :
                     data
             );
+        }
         else if (type == EventType.DirectorInput)
             Log.Debug("  事件数据 (DirectorInput): {Data}", data);
 
         var eventItem = new PlaythroughEvent
         {
             ProjectID = projectID,
+            SessionID = sessionID,
             RoundID   = roundID,
             Type      = type,
             Data      = data,

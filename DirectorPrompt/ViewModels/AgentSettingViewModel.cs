@@ -46,6 +46,10 @@ public sealed partial class AgentSettingViewModel : ObservableObject
     [ObservableProperty]
     private bool? connectionSuccess;
 
+    public string SystemPrompt { get; set; } = string.Empty;
+
+    public string[] Tools { get; set; } = [];
+
     public string RoleDisplay => Role.GetDescription();
 
     public static string[] AvailableProviders { get; } = ["openai", "ollama", "custom"];

@@ -40,6 +40,15 @@ public partial class App : Application
                            {
                                config.SetBasePath(AppContext.BaseDirectory);
                                config.AddJsonFile("appsettings.json", false, true);
+
+                               var userSettingsDir = Path.Combine
+                               (
+                                   Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                                   "DirectorPrompt"
+                               );
+
+                               var userSettingsPath = Path.Combine(userSettingsDir, "usersettings.json");
+                               config.AddJsonFile(userSettingsPath, true, true);
                            }
                        )
                        .ConfigureServices(ConfigureServices)
@@ -140,6 +149,9 @@ public partial class App : Application
 
         var orchestratorConfig = configuration.GetSection("Orchestrator").Get<OrchestratorConfig>() ?? new OrchestratorConfig();
         services.AddSingleton(orchestratorConfig);
+
+        var userSettings = configuration.Get<UserSettings>() ?? new UserSettings();
+        services.AddSingleton(userSettings);
 
         var embeddingSection  = configuration.GetSection("Embedding");
         var embeddingProvider = embeddingSection["Provider"] ?? "openai";

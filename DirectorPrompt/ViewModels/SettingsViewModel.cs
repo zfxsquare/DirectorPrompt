@@ -1,24 +1,35 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.Json;
-using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Services;
 using DirectorPrompt.Localization;
-using Microsoft.Extensions.Configuration;
 using Serilog;
 
 namespace DirectorPrompt.ViewModels;
 
 public sealed partial class SettingsViewModel : ObservableObject
 {
-    private readonly IConfiguration         configuration;
+    private static readonly JsonSerializerOptions JSONOptions = new()
+    {
+        WriteIndented = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        Converters = { new JsonStringEnumConverter() }
+    };
+
+    private static readonly string UserSettingsDir = Path.Combine
+    (
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "DirectorPrompt"
+    );
+
+    private static readonly string UserSettingsPath = Path.Combine(UserSettingsDir, "usersettings.json");
+
     private readonly IModelConnectionTester connectionTester;
     private readonly ILocalizationService   localizationService;
-
-    private readonly Dictionary<string, string[]> agentTools = new(StringComparer.OrdinalIgnoreCase);
 
     [ObservableProperty]
     private bool isSaving;
@@ -40,21 +51,56 @@ public sealed partial class SettingsViewModel : ObservableObject
     public IReadOnlyDictionary<string, string> AvailableLanguages =>
         localizationService.AvailableLanguages;
 
-    public SettingsViewModel(IConfiguration configuration, IModelConnectionTester connectionTester, ILocalizationService localizationService)
+    public SettingsViewModel
+    (
+        UserSettings           userSettings,
+        IModelConnectionTester connectionTester,
+        ILocalizationService   localizationService
+    )
     {
-        this.configuration       = configuration;
         this.connectionTester    = connectionTester;
         this.localizationService = localizationService;
-        LoadSettings();
+
+        LoadSettings(userSettings);
     }
 
-    private void LoadSettings()
+    private void LoadSettings(UserSettings userSettings)
     {
-        DatabasePath     = configuration["Database:Path"] ?? "data/director.db";
-        SnapshotInterval = configuration.GetValue<int>("Orchestrator:SnapshotInterval");
-        SelectedLanguage = configuration["Localization:Language"] ?? localizationService.CurrentLanguage;
+        DatabasePath     = userSettings.Database.Path;
+        SnapshotInterval = userSettings.Orchestrator.SnapshotInterval;
+        SelectedLanguage = userSettings.Localization.Language;
 
-        LoadAgents();
+        if (string.IsNullOrEmpty(SelectedLanguage))
+            SelectedLanguage = localizationService.CurrentLanguage;
+
+        LoadAgents(userSettings.Orchestrator.Agents);
+    }
+
+    private void LoadAgents(List<AgentDefinition> agents)
+    {
+        if (agents is null || agents.Count == 0)
+            return;
+
+        foreach (var agent in agents)
+        {
+            Agents.Add
+            (
+                new AgentSettingViewModel
+                {
+                    Name        = agent.Name,
+                    Role        = agent.Role,
+                    Provider    = agent.ModelConfig.Provider,
+                    Endpoint    = agent.ModelConfig.Endpoint,
+                    APIKey      = agent.ModelConfig.APIKey ?? string.Empty,
+                    ModelName   = agent.ModelConfig.ModelName,
+                    SystemPrompt = agent.SystemPrompt,
+                    Temperature = agent.Temperature,
+                    Tools       = agent.Tools,
+                    Enabled     = agent.Enabled,
+                    MaxRetries  = agent.MaxRetries
+                }
+            );
+        }
     }
 
     partial void OnSelectedLanguageChanged(string value)
@@ -66,35 +112,6 @@ public sealed partial class SettingsViewModel : ObservableObject
             localizationService.LoadLanguage(value);
     }
 
-    private void LoadAgents()
-    {
-        var agents = configuration.GetSection("Orchestrator:Agents").Get<List<AgentDefinition>>();
-
-        if (agents is null || agents.Count == 0)
-            return;
-
-        foreach (var agent in agents)
-        {
-            agentTools[agent.Name] = agent.Tools;
-
-            Agents.Add
-            (
-                new AgentSettingViewModel
-                {
-                    Name        = agent.Name,
-                    Role        = agent.Role,
-                    Provider    = agent.ModelConfig.Provider,
-                    Endpoint    = agent.ModelConfig.Endpoint,
-                    APIKey      = agent.ModelConfig.APIKey ?? string.Empty,
-                    ModelName   = agent.ModelConfig.ModelName,
-                    Temperature = agent.Temperature,
-                    Enabled     = agent.Enabled,
-                    MaxRetries  = agent.MaxRetries
-                }
-            );
-        }
-    }
-
     [RelayCommand]
     private async Task SaveAsync()
     {
@@ -102,10 +119,11 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         try
         {
-            var json = BuildSettingsJSON();
-            var path = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+            var settings = BuildUserSettings();
+            var json     = JsonSerializer.Serialize(settings, JSONOptions);
 
-            await File.WriteAllTextAsync(path, json);
+            Directory.CreateDirectory(UserSettingsDir);
+            await File.WriteAllTextAsync(UserSettingsPath, json);
 
             ValidationMessage = Loc.Get("Settings.Saved");
         }
@@ -120,104 +138,38 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
     }
 
-    private string BuildSettingsJSON()
+    private UserSettings BuildUserSettings()
     {
-        var root = new JsonObject
-        {
-            ["Database"] = new JsonObject
+        var agents = Agents.Select
+        (
+            a => new AgentDefinition
             {
-                ["Path"] = DatabasePath
-            },
-            ["Orchestrator"] = BuildOrchestratorJSON(),
-            ["Embedding"] = new JsonObject
-            {
-                ["Provider"]  = configuration["Embedding:Provider"]  ?? "openai",
-                ["Endpoint"]  = configuration["Embedding:Endpoint"]  ?? string.Empty,
-                ["ApiKey"]    = configuration["Embedding:ApiKey"]    ?? string.Empty,
-                ["ModelName"] = configuration["Embedding:ModelName"] ?? "text-embedding-3-small"
-            },
-            ["Localization"] = new JsonObject
-            {
-                ["Language"] = SelectedLanguage
-            }
-        };
-
-        var options = new JsonSerializerOptions
-        {
-            WriteIndented = true
-        };
-
-        return root.ToJsonString(options);
-    }
-
-    private JsonObject BuildOrchestratorJSON()
-    {
-        var agentsArray = new JsonArray();
-
-        foreach (var agent in Agents)
-        {
-            var tools = agentTools.TryGetValue(agent.Name, out var t) ?
-                            t :
-                            [];
-
-            var toolNodes = tools.Select(tool => (JsonNode)tool).ToList();
-
-            var agentObj = new JsonObject
-            {
-                ["Name"] = agent.Name,
-                ["Role"] = agent.Role.ToString(),
-                ["ModelConfig"] = new JsonObject
+                Name         = a.Name,
+                Role         = a.Role,
+                ModelConfig  = new ModelConfig
                 {
-                    ["Provider"]  = agent.Provider,
-                    ["Endpoint"]  = agent.Endpoint,
-                    ["APIKey"]    = agent.APIKey,
-                    ["ModelName"] = agent.ModelName
+                    Provider  = a.Provider,
+                    Endpoint  = a.Endpoint,
+                    APIKey    = a.APIKey,
+                    ModelName = a.ModelName
                 },
-                ["SystemPrompt"] = string.Empty,
-                ["Temperature"]  = agent.Temperature,
-                ["Tools"]        = new JsonArray([.. toolNodes]),
-                ["Enabled"]      = agent.Enabled
-            };
+                SystemPrompt = a.SystemPrompt,
+                Temperature  = a.Temperature,
+                Tools        = a.Tools,
+                Enabled      = a.Enabled,
+                MaxRetries   = a.MaxRetries
+            }
+        ).ToList();
 
-            if (agent.MaxRetries.HasValue)
-                agentObj["MaxRetries"] = agent.MaxRetries.Value;
-
-            agentsArray.Add(agentObj);
-        }
-
-        var auditSection = configuration.GetSection("Orchestrator:AuditConfig");
-        var dimensionNodes = auditSection.GetSection("Dimensions")
-                                         .Get<List<string>>()
-                                         ?.Select(d => (JsonNode)d)
-                                         .ToList() ??
-                             [];
-
-        var memorySection    = configuration.GetSection("Orchestrator:MemoryConfig");
-        var knowledgeSection = configuration.GetSection("Orchestrator:KnowledgeConfig");
-
-        return new JsonObject
+        return new UserSettings
         {
-            ["Agents"] = agentsArray,
-            ["AuditConfig"] = new JsonObject
+            Database = new DatabaseConfig { Path = DatabasePath },
+            Orchestrator = new UserOrchestratorConfig
             {
-                ["Mode"]       = auditSection["Mode"]                      ?? "Blocking",
-                ["MaxRetries"] = auditSection.GetValue<int?>("MaxRetries") ?? 2,
-                ["Dimensions"] = new JsonArray([.. dimensionNodes])
+                Agents          = agents,
+                SnapshotInterval = SnapshotInterval
             },
-            ["MemoryConfig"] = new JsonObject
-            {
-                ["RecallTopK"]      = memorySection.GetValue<int?>("RecallTopK")        ?? 10,
-                ["TokenBudget"]     = memorySection.GetValue<int?>("TokenBudget")       ?? 1500,
-                ["MinRelevance"]    = memorySection.GetValue<float?>("MinRelevance")    ?? 0,
-                ["TimeDecayLambda"] = memorySection.GetValue<float?>("TimeDecayLambda") ?? 0
-            },
-            ["KnowledgeConfig"] = new JsonObject
-            {
-                ["SemanticTopK"] = knowledgeSection.GetValue<int?>("SemanticTopK")   ?? 8,
-                ["TokenBudget"]  = knowledgeSection.GetValue<int?>("TokenBudget")    ?? 2000,
-                ["MinRelevance"] = knowledgeSection.GetValue<float?>("MinRelevance") ?? 0
-            },
-            ["SnapshotInterval"] = SnapshotInterval
+            Localization = new LocalizationConfig { Language = SelectedLanguage }
         };
     }
 

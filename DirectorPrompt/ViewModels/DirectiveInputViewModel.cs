@@ -16,6 +16,14 @@ public sealed partial class DirectiveItemViewModel : ObservableObject
     [ObservableProperty]
     private int order;
 
+    private int? ttl;
+
+    public int? TTL
+    {
+        get => ttl;
+        set => SetProperty(ref ttl, value);
+    }
+
     public string TypeDisplay => Type switch
     {
         DirectiveType.Plot                => "剧情",
@@ -24,6 +32,16 @@ public sealed partial class DirectiveItemViewModel : ObservableObject
         DirectiveType.SceneChange         => "时间/场景变更",
         _                                 => Type.ToString()
     };
+
+    public bool HasTTL => Type is DirectiveType.Tone or DirectiveType.TemporaryConstraint;
+
+    partial void OnTypeChanged(DirectiveType value)
+    {
+        OnPropertyChanged(nameof(HasTTL));
+
+        if (!HasTTL)
+            TTL = null;
+    }
 }
 
 public sealed partial class DirectiveInputViewModel : ObservableObject
@@ -35,9 +53,24 @@ public sealed partial class DirectiveInputViewModel : ObservableObject
     private string inputContent = string.Empty;
 
     [ObservableProperty]
+    private int? inputTTL;
+
+    [ObservableProperty]
     private bool isSending;
 
     public ObservableCollection<DirectiveItemViewModel> Directives { get; } = [];
+
+    public bool InputHasTTL => SelectedType is DirectiveType.Tone or DirectiveType.TemporaryConstraint;
+
+    partial void OnSelectedTypeChanged(DirectiveType value)
+    {
+        OnPropertyChanged(nameof(InputHasTTL));
+
+        if (!InputHasTTL)
+            InputTTL = null;
+        else if (InputTTL is null)
+            InputTTL = 5;
+    }
 
     [RelayCommand]
     public void AddDirective()
@@ -51,7 +84,8 @@ public sealed partial class DirectiveInputViewModel : ObservableObject
             {
                 Type    = SelectedType,
                 Content = InputContent.Trim(),
-                Order   = Directives.Count + 1
+                Order   = Directives.Count + 1,
+                TTL     = InputHasTTL ? InputTTL : null
             }
         );
 

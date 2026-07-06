@@ -29,7 +29,9 @@ public sealed class ChatClientFactory : IChatClientFactory
 
         var chatClient = openAIClient.GetChatClient(config.ModelName);
 
-        return chatClient.AsIChatClient();
+        return new ChatClientBuilder(chatClient.AsIChatClient())
+               .UseFunctionInvocation()
+               .Build();
     }
 
     private static OpenAIClient CreateOpenAIClient(ModelConfig config)

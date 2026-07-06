@@ -7,9 +7,13 @@ namespace DirectorPrompt.Infrastructure.Repositories;
 public sealed class KnowledgeRepository : IKnowledgeRepository
 {
     private readonly SqliteConnectionFactory connectionFactory;
+    private readonly VectorTableManager    vectorTableManager;
 
-    public KnowledgeRepository(SqliteConnectionFactory connectionFactory) =>
-        this.connectionFactory = connectionFactory;
+    public KnowledgeRepository(SqliteConnectionFactory connectionFactory, VectorTableManager vectorTableManager)
+    {
+        this.connectionFactory   = connectionFactory;
+        this.vectorTableManager  = vectorTableManager;
+    }
 
     public async Task<KnowledgeEntry?> GetByIDAsync(long id, CancellationToken cancellationToken = default)
     {
@@ -136,6 +140,12 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
+        var projectID = await connection.QueryFirstOrDefaultAsync<long?>
+                         (
+                             "SELECT project_id FROM knowledge_entries WHERE id = @id",
+                             new { id }
+                         );
+
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
         try
@@ -161,6 +171,9 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
             await transaction.RollbackAsync(cancellationToken);
             throw;
         }
+
+        if (projectID is not null)
+            await DeleteEmbeddingAsync(projectID.Value, id, cancellationToken);
     }
 
     public async Task<IReadOnlyList<KnowledgeGroup>> GetGroupsAsync(long projectID, CancellationToken cancellationToken = default)
@@ -290,6 +303,100 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
         );
     }
 
+    public async Task SaveEmbeddingAsync(long projectID, long entryID, byte[] embedding, string contentHash, CancellationToken cancellationToken = default)
+    {
+        var dimension = embedding.Length / sizeof(float);
+        var tableName = VectorTableManager.GetKnowledgeTableName(projectID);
+
+        await vectorTableManager.EnsureTableAsync(tableName, dimension, cancellationToken);
+
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
+        try
+        {
+            await connection.ExecuteAsync
+            (
+                $"INSERT OR REPLACE INTO \"{tableName}\" (entry_id, embedding) VALUES (@entryID, @embedding)",
+                new { entryID, embedding },
+                transaction
+            );
+
+            await connection.ExecuteAsync
+            (
+                "UPDATE knowledge_entries SET content_hash = @contentHash WHERE id = @entryID",
+                new { entryID, contentHash },
+                transaction
+            );
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+
+    public async Task DeleteEmbeddingAsync(long projectID, long entryID, CancellationToken cancellationToken = default)
+    {
+        var tableName = VectorTableManager.GetKnowledgeTableName(projectID);
+
+        if (!await vectorTableManager.TableExistsAsync(tableName, cancellationToken))
+            return;
+
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        await connection.ExecuteAsync
+        (
+            $"DELETE FROM \"{tableName}\" WHERE entry_id = @entryID",
+            new { entryID }
+        );
+    }
+
+    public async Task<IReadOnlyList<(long entryID, float distance)>> SearchByVectorAsync
+    (
+        long                projectID,
+        byte[]              queryVector,
+        int                 topK,
+        IReadOnlyList<long>? candidateIDs = null,
+        CancellationToken   cancellationToken = default
+    )
+    {
+        var tableName = VectorTableManager.GetKnowledgeTableName(projectID);
+
+        if (!await vectorTableManager.TableExistsAsync(tableName, cancellationToken))
+            return [];
+
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        var sql = candidateIDs is { Count: > 0 } ?
+            $"""
+            SELECT entry_id AS EntryID, distance AS Distance
+            FROM "{tableName}"
+            WHERE embedding MATCH @queryVector
+              AND entry_id IN @candidateIDs
+            ORDER BY distance
+            LIMIT @topK
+            """ :
+            $"""
+            SELECT entry_id AS EntryID, distance AS Distance
+            FROM "{tableName}"
+            WHERE embedding MATCH @queryVector
+            ORDER BY distance
+            LIMIT @topK
+            """;
+
+        var rows = await connection.QueryAsync<(long EntryID, float Distance)>
+                   (
+                       sql,
+                       new { queryVector, topK, candidateIDs }
+                   );
+
+        return rows.Select(r => (r.EntryID, r.Distance)).ToList();
+    }
+
     private sealed class KnowledgeEntryRow
     {
         public long   ID         { get; set; }
@@ -299,6 +406,7 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
         public string Tags       { get; set; } = "[]";
         public long?  Group_ID   { get; set; }
         public int    Active     { get; set; }
+        public string? Content_Hash { get; set; }
         public string Created_At { get; set; } = string.Empty;
         public string Updated_At { get; set; } = string.Empty;
 
@@ -312,6 +420,7 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
                 Tags      = JsonHelper.DeserializeStringArray(Tags),
                 GroupID   = Group_ID,
                 Active    = Active != 0,
+                ContentHash = Content_Hash,
                 CreatedAt = DateTime.Parse(Created_At),
                 UpdatedAt = DateTime.Parse(Updated_At)
             };

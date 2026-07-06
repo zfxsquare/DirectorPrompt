@@ -3,18 +3,19 @@ using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 using DirectorPrompt.Domain.Services;
 using Microsoft.Extensions.AI;
+using Serilog;
 
 namespace DirectorPrompt.Agents.Tools;
 
 public sealed class MemoryTools
 {
-    private readonly IMemoryRepository memoryRepository;
-    private readonly IEmbeddingService embeddingService;
+    private readonly IMemoryRepository        memoryRepository;
+    private readonly IEmbeddingServiceFactory embeddingServiceFactory;
 
-    public MemoryTools(IMemoryRepository memoryRepository, IEmbeddingService embeddingService)
+    public MemoryTools(IMemoryRepository memoryRepository, IEmbeddingServiceFactory embeddingServiceFactory)
     {
-        this.memoryRepository = memoryRepository;
-        this.embeddingService = embeddingService;
+        this.memoryRepository        = memoryRepository;
+        this.embeddingServiceFactory = embeddingServiceFactory;
     }
 
     public IList<AIFunction> Create(ToolExecutionContext context) =>
@@ -56,32 +57,108 @@ public sealed class MemoryTools
         int?                 topK
     )
     {
+        Log.Information("工具调用: query_memory(query={Query}, tags={Tags}, topK={TopK})", query, tags, topK);
+
         var memories = await memoryRepository.GetBySessionAsync(context.SessionID, context.TimelinePosition);
 
         if (memories.Count == 0)
-            return JsonSerializer.Serialize(Array.Empty<object>());
+        {
+            Log.Information("工具调用完成: query_memory, 结果=无记忆条目");
+            return JsonSerializer.Serialize(new { message = "无可用记忆" });
+        }
 
-        var limit = topK ?? 10;
-
-        var filtered = memories.AsEnumerable();
+        IEnumerable<MemoryEntry> candidates = memories;
 
         if (!string.IsNullOrWhiteSpace(tags))
         {
             var tagList = tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            filtered = filtered.Where(m => m.Tags.Any(t => tagList.Contains(t)));
+            candidates = candidates.Where(m => m.Tags.Any(t => tagList.Contains(t)));
         }
 
-        var result = filtered
-                     .Take(limit)
+        var candidateList = candidates.ToList();
+
+        if (candidateList.Count == 0)
+        {
+            Log.Information("工具调用完成: query_memory, 结果=无匹配记忆条目");
+            return JsonSerializer.Serialize(new { message = "无可用记忆" });
+        }
+
+        var embeddingService = embeddingServiceFactory.Create(context.EmbeddingConfig);
+
+        var needsRegeneration = candidateList
+                                .Where(m =>
+                                {
+                                    var currentHash = EmbeddingConversions.ComputeHash(m.Content);
+                                    return m.ContentHash != currentHash;
+                                })
+                                .ToList();
+
+        if (needsRegeneration.Count > 0)
+        {
+            Log.Information
+            (
+                "记忆向量补全: 需生成 {Count}/{Total} 条",
+                needsRegeneration.Count,
+                candidateList.Count
+            );
+
+            foreach (var memory in needsRegeneration)
+            {
+                var emb      = await embeddingService.GenerateEmbeddingAsync(memory.Content);
+                var hash     = EmbeddingConversions.ComputeHash(memory.Content);
+                var embBytes = EmbeddingConversions.FloatsToBytes(emb);
+
+                await memoryRepository.SaveEmbeddingAsync(context.ProjectID, memory.ID, embBytes, hash);
+            }
+
+            memories = await memoryRepository.GetBySessionAsync(context.SessionID, context.TimelinePosition);
+
+            candidates = memories;
+
+            if (!string.IsNullOrWhiteSpace(tags))
+            {
+                var tagList = tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                candidates = candidates.Where(m => m.Tags.Any(t => tagList.Contains(t)));
+            }
+
+            candidateList = candidates.ToList();
+        }
+
+        var queryEmbedding = await embeddingService.GenerateEmbeddingAsync(query);
+        var queryBytes     = EmbeddingConversions.FloatsToBytes(queryEmbedding);
+        var limit          = topK ?? 10;
+
+        var candidateIDs = candidateList.Select(m => m.ID).ToList();
+
+        var searchResults = await memoryRepository.SearchByVectorAsync
+                            (
+                                context.ProjectID,
+                                queryBytes,
+                                limit,
+                                candidateIDs
+                            );
+
+        var memoryMap = candidateList.ToDictionary(m => m.ID);
+
+        var result = searchResults
+                     .Where(sr => memoryMap.ContainsKey(sr.entryID))
                      .Select
-                     (m => new
+                     (sr =>
                          {
-                             id      = m.ID,
-                             content = m.Content,
-                             tags    = m.Tags,
-                             sceneID = m.SceneID
+                             var m = memoryMap[sr.entryID];
+                             return new
+                             {
+                                 id       = m.ID,
+                                 content  = m.Content,
+                                 tags     = m.Tags,
+                                 sceneID  = m.SceneID,
+                                 relevance = Math.Round(1f - sr.distance, 4)
+                             };
                          }
-                     );
+                     )
+                     .ToList();
+
+        Log.Information("工具调用完成: query_memory, 返回条目数={Count}", result.Count);
 
         return JsonSerializer.Serialize(result);
     }
@@ -94,6 +171,7 @@ public sealed class MemoryTools
         string               tags
     )
     {
+        Log.Information("工具调用: create_memory(sceneID={SceneID}, content={Content})", sceneID, content.Length > 100 ? content[..100] + "..." : content);
         var tagList = ParseTags(tags);
 
         var entry = new MemoryEntry
@@ -108,6 +186,8 @@ public sealed class MemoryTools
 
         var created = await memoryRepository.CreateAsync(entry);
 
+        Log.Information("工具调用完成: create_memory, memoryID={ID}", created.ID);
+
         return JsonSerializer.Serialize(new { memoryID = created.ID });
     }
 
@@ -119,6 +199,7 @@ public sealed class MemoryTools
         string?              tags
     )
     {
+        Log.Information("工具调用: update_memory(memoryID={MemoryID})", memoryID);
         var existing = await memoryRepository.GetByIDAsync(memoryID);
 
         if (existing is null)
@@ -145,6 +226,7 @@ public sealed class MemoryTools
         string               tags
     )
     {
+        Log.Information("工具调用: merge_memories(memoryIDs={MemoryIDs})", memoryIDs);
         var idList = memoryIDs
                      .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                      .Select(long.Parse)

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Dapper;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
@@ -28,7 +29,7 @@ public sealed class EventRepository : IEventRepository
                          projectID = eventItem.ProjectID,
                          sessionID = eventItem.SessionID,
                          roundID   = eventItem.RoundID,
-                         type      = eventItem.Type.ToString().ToLowerInvariant(),
+                         type      = JsonNamingPolicy.SnakeCaseLower.ConvertName(eventItem.Type.ToString()),
                          data      = eventItem.Data,
                          createdAt = eventItem.CreatedAt.ToString("O")
                      }

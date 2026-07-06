@@ -2,6 +2,7 @@ using System.Text.Json;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Repositories;
 using Microsoft.Extensions.AI;
+using Serilog;
 
 namespace DirectorPrompt.Agents.Tools;
 
@@ -121,6 +122,7 @@ public sealed class StateTools
         string               reason
     )
     {
+        Log.Information("工具调用: update_state(attribute={Attribute}, delta={Delta}, reason={Reason})", attribute, delta, reason);
         var attributes = await stateRepository.GetAttributesAsync(context.ProjectID);
         var attr       = attributes.FirstOrDefault(a => a.Name == attribute);
 
@@ -142,6 +144,8 @@ public sealed class StateTools
             context.RoundID
         );
 
+        Log.Information("工具调用完成: update_state, {OldValue} -> {NewValue}", currentValue?.Value, newValue.ToString());
+
         return JsonSerializer.Serialize
         (
             new
@@ -160,6 +164,7 @@ public sealed class StateTools
         string               reason
     )
     {
+        Log.Information("工具调用: set_state(attribute={Attribute}, value={Value}, reason={Reason})", attribute, value, reason);
         var attributes = await stateRepository.GetAttributesAsync(context.ProjectID);
         var attr       = attributes.FirstOrDefault(a => a.Name == attribute);
 

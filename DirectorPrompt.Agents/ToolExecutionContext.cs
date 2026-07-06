@@ -1,10 +1,13 @@
+using DirectorPrompt.Domain.Configurations;
+
 namespace DirectorPrompt.Agents;
 
 public record ToolExecutionContext
 (
-    long  ProjectID,
-    long  SessionID,
-    long? SceneID,
-    long  TimelinePosition,
-    long  RoundID
+    long        ProjectID,
+    long        SessionID,
+    long?       SceneID,
+    long        TimelinePosition,
+    long        RoundID,
+    ModelConfig EmbeddingConfig
 );

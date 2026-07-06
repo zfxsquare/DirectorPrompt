@@ -19,4 +19,17 @@ public interface IMemoryRepository
     Task<MemoryEntry> MergeAsync(IReadOnlyList<long> memoryIDs, long sceneID, string content, string[] tags, CancellationToken cancellationToken = default);
 
     Task DeleteAsync(long id, CancellationToken cancellationToken = default);
+
+    Task SaveEmbeddingAsync(long projectID, long entryID, byte[] embedding, string contentHash, CancellationToken cancellationToken = default);
+
+    Task DeleteEmbeddingAsync(long projectID, long entryID, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<(long entryID, float distance)>> SearchByVectorAsync
+    (
+        long                projectID,
+        byte[]              queryVector,
+        int                 topK,
+        IReadOnlyList<long>? candidateIDs = null,
+        CancellationToken   cancellationToken = default
+    );
 }

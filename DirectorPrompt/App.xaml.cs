@@ -112,6 +112,7 @@ public partial class App : Application
 
         services.AddSingleton(connectionFactory);
         services.AddSingleton<SchemaMigrator>();
+        services.AddSingleton<VectorTableManager>();
 
         services.AddSingleton<IProjectRepository, ProjectRepository>();
         services.AddSingleton<ISessionRepository, SessionRepository>();
@@ -136,21 +137,7 @@ public partial class App : Application
         var userSettings = configuration.Get<UserSettings>() ?? new UserSettings();
         services.AddSingleton(userSettings);
 
-        var embeddingSection  = configuration.GetSection("Embedding");
-        var embeddingProvider = embeddingSection["Provider"] ?? "openai";
-        var embeddingEndpoint = embeddingSection["Endpoint"] ?? string.Empty;
-        var embeddingAPIKey   = embeddingSection["ApiKey"];
-        var embeddingModel    = embeddingSection["ModelName"] ?? "text-embedding-3-small";
-
-        services.AddSingleton<IEmbeddingService>
-        (_ => new EmbeddingService
-         (
-             embeddingProvider,
-             embeddingEndpoint,
-             embeddingAPIKey,
-             embeddingModel
-         )
-        );
+        services.AddSingleton<IEmbeddingServiceFactory, EmbeddingServiceFactory>();
 
         RegisterLocalization(services, configuration);
 

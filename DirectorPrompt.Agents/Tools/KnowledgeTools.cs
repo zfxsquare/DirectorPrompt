@@ -3,18 +3,19 @@ using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 using DirectorPrompt.Domain.Services;
 using Microsoft.Extensions.AI;
+using Serilog;
 
 namespace DirectorPrompt.Agents.Tools;
 
 public sealed class KnowledgeTools
 {
-    private readonly IKnowledgeRepository knowledgeRepository;
-    private readonly IEmbeddingService    embeddingService;
+    private readonly IKnowledgeRepository   knowledgeRepository;
+    private readonly IEmbeddingServiceFactory embeddingServiceFactory;
 
-    public KnowledgeTools(IKnowledgeRepository knowledgeRepository, IEmbeddingService embeddingService)
+    public KnowledgeTools(IKnowledgeRepository knowledgeRepository, IEmbeddingServiceFactory embeddingServiceFactory)
     {
-        this.knowledgeRepository = knowledgeRepository;
-        this.embeddingService    = embeddingService;
+        this.knowledgeRepository     = knowledgeRepository;
+        this.embeddingServiceFactory = embeddingServiceFactory;
     }
 
     public IList<AIFunction> Create(ToolExecutionContext context) =>
@@ -29,60 +30,80 @@ public sealed class KnowledgeTools
 
     private async Task<string> QueryKnowledgeAsync(ToolExecutionContext context, string query, int? topK)
     {
+        Log.Information("工具调用: query_knowledge(query={Query}, topK={TopK})", query, topK);
+
         var entries = await knowledgeRepository.GetActiveEntriesAsync(context.ProjectID);
 
         if (entries.Count == 0)
-            return JsonSerializer.Serialize(Array.Empty<object>());
-
-        var queryEmbedding = await embeddingService.GenerateEmbeddingAsync(query);
-        var limit          = topK ?? 8;
-
-        var scored = entries
-                     .Select
-                     (e => new
-                         {
-                             entry     = e,
-                             relevance = ComputeRelevance(query, e)
-                         }
-                     )
-                     .OrderByDescending(x => x.relevance)
-                     .Take(limit)
-                     .Select
-                     (x => new
-                         {
-                             title     = x.entry.Title,
-                             content   = x.entry.Content,
-                             tags      = x.entry.Tags,
-                             relevance = Math.Round(x.relevance, 4)
-                         }
-                     );
-
-        return JsonSerializer.Serialize(scored);
-    }
-
-    private static float ComputeRelevance(string query, KnowledgeEntry entry)
-    {
-        var queryLower   = query.ToLowerInvariant();
-        var titleLower   = entry.Title.ToLowerInvariant();
-        var contentLower = entry.Content.ToLowerInvariant();
-
-        var score = 0f;
-
-        if (titleLower.Contains(queryLower))
-            score += 0.5f;
-
-        if (contentLower.Contains(queryLower))
-            score += 0.3f;
-
-        foreach (var tag in entry.Tags)
         {
-            if (queryLower.Contains(tag.ToLowerInvariant()))
-            {
-                score += 0.2f;
-                break;
-            }
+            Log.Information("工具调用完成: query_knowledge, 结果=无知识条目");
+            return JsonSerializer.Serialize(new { message = "无可用知识" });
         }
 
-        return score;
+        var embeddingService = embeddingServiceFactory.Create(context.EmbeddingConfig);
+
+        var needsRegeneration = entries
+                                .Where(e =>
+                                {
+                                    var currentHash = EmbeddingConversions.ComputeHash($"{e.Title}\n{e.Content}");
+                                    return e.ContentHash != currentHash;
+                                })
+                                .ToList();
+
+        if (needsRegeneration.Count > 0)
+        {
+            Log.Information
+            (
+                "知识向量补全: 需生成 {Count}/{Total} 条",
+                needsRegeneration.Count,
+                entries.Count
+            );
+
+            foreach (var entry in needsRegeneration)
+            {
+                var text     = $"{entry.Title}\n{entry.Content}";
+                var emb      = await embeddingService.GenerateEmbeddingAsync(text);
+                var hash     = EmbeddingConversions.ComputeHash(text);
+                var embBytes = EmbeddingConversions.FloatsToBytes(emb);
+
+                await knowledgeRepository.SaveEmbeddingAsync(context.ProjectID, entry.ID, embBytes, hash);
+            }
+
+            entries = await knowledgeRepository.GetActiveEntriesAsync(context.ProjectID);
+        }
+
+        var queryEmbedding = await embeddingService.GenerateEmbeddingAsync(query);
+        var queryBytes     = EmbeddingConversions.FloatsToBytes(queryEmbedding);
+        var limit          = topK ?? 8;
+
+        var searchResults = await knowledgeRepository.SearchByVectorAsync
+                            (
+                                context.ProjectID,
+                                queryBytes,
+                                limit
+                            );
+
+        var entryMap = entries.ToDictionary(e => e.ID);
+
+        var result = searchResults
+                     .Where(sr => entryMap.ContainsKey(sr.entryID))
+                     .Select
+                     (sr =>
+                         {
+                             var entry = entryMap[sr.entryID];
+                             return new
+                             {
+                                 title     = entry.Title,
+                                 content   = entry.Content,
+                                 tags      = entry.Tags,
+                                 relevance = Math.Round(1f - sr.distance, 4)
+                             };
+                         }
+                     )
+                     .ToList();
+
+        Log.Information("工具调用完成: query_knowledge, 返回条目数={Count}", result.Count);
+
+        return JsonSerializer.Serialize(result);
     }
 }

@@ -336,7 +336,7 @@ public sealed partial class MainViewModel : ObservableObject
         try
         {
             var items = DirectiveInput.Directives
-                                      .Select(d => new DirectiveItem(d.Type, d.Content, d.Order))
+                                      .Select(d => new DirectiveItem(d.Type, d.Content, d.Order, d.TTL))
                                       .ToList();
 
             var batch = new DirectiveBatch(CurrentProject.ID, items);
@@ -349,9 +349,6 @@ public sealed partial class MainViewModel : ObservableObject
                 CurrentSession.ID,
                 items.Count
             );
-
-            foreach (var d in items)
-                Log.Information("  指令 #{Order} [{Type}] {Content}", d.Order, d.Type, d.Content);
 
             var directorContent = string.Join("\n", items.Select(d => $"[{d.Type}] {d.Content}"));
             Dialog.AddDirectorEntry(0, directorContent);

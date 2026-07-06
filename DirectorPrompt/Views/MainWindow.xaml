@@ -369,6 +369,7 @@
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
@@ -378,7 +379,14 @@
                                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                                        Margin="0,0,8,0"
                                                        VerticalAlignment="Center" />
-                                            <ui:TextBox Grid.Column="1"
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding StringFormat='TTL: {0} 轮', Path=TTL}"
+                                                       FontSize="11"
+                                                       Foreground="Gray"
+                                                       Margin="0,0,8,0"
+                                                       VerticalAlignment="Center"
+                                                       Visibility="{Binding HasTTL, Converter={StaticResource BoolToVisibility}}" />
+                                            <ui:TextBox Grid.Column="2"
                                                         Text="{Binding Content, UpdateSourceTrigger=PropertyChanged}"
                                                         TextWrapping="Wrap"
                                                         AcceptsReturn="True"
@@ -387,7 +395,7 @@
                                                         VerticalAlignment="Center"
                                                         BorderThickness="0"
                                                         Background="Transparent" />
-                                            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                            <StackPanel Grid.Column="3" Orientation="Horizontal">
                                                 <Button Padding="12,8"
                                                         MinWidth="36"
                                                         Margin="2,0"
@@ -419,6 +427,7 @@
                         <Grid Margin="0,4,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="140" />
+                                <ColumnDefinition Width="80" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
@@ -436,18 +445,27 @@
                                 <ComboBoxItem
                                     Content="{Binding [Directive.Type.SceneChange], Source={x:Static loc:Loc.Instance}}" />
                             </ComboBox>
-                            <ui:TextBox Grid.Column="1"
+                            <ui:NumberBox Grid.Column="1"
+                                          Margin="4,0"
+                                          Value="{Binding DirectiveInput.InputTTL, TargetNullValue=5}"
+                                          Minimum="1"
+                                          Maximum="999"
+                                          SmallChange="1"
+                                          LargeChange="5"
+                                          Visibility="{Binding DirectiveInput.InputHasTTL, Converter={StaticResource BoolToVisibility}}"
+                                          ToolTip="生效轮数" />
+                            <ui:TextBox Grid.Column="2"
                                         Margin="4,0"
                                         PlaceholderText="{Binding [Dialog.InputPlaceholder], Source={x:Static loc:Loc.Instance}}"
                                         Text="{Binding DirectiveInput.InputContent, UpdateSourceTrigger=PropertyChanged}"
                                         KeyDown="OnInputKeyDown" />
-                            <ui:Button Grid.Column="2"
+                            <ui:Button Grid.Column="3"
                                        Content="{Binding [Dialog.AddDirective], Source={x:Static loc:Loc.Instance}}"
                                        Icon="Add24"
                                        Margin="4,0"
                                        Padding="12,6"
                                        Command="{Binding DirectiveInput.AddDirectiveCommand}" />
-                            <ui:Button Grid.Column="3"
+                            <ui:Button Grid.Column="4"
                                        Content="{Binding [Dialog.SendDirective], Source={x:Static loc:Loc.Instance}}"
                                        Icon="Send24"
                                        Appearance="Primary"

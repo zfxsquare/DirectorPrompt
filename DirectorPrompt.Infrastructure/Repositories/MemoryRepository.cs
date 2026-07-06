@@ -11,11 +11,13 @@ public sealed class MemoryRepository : IMemoryRepository
 {
     private readonly SqliteConnectionFactory   connectionFactory;
     private readonly IRoundChangeRepository   roundChangeRepository;
+    private readonly VectorTableManager        vectorTableManager;
 
-    public MemoryRepository(SqliteConnectionFactory connectionFactory, IRoundChangeRepository roundChangeRepository)
+    public MemoryRepository(SqliteConnectionFactory connectionFactory, IRoundChangeRepository roundChangeRepository, VectorTableManager vectorTableManager)
     {
         this.connectionFactory     = connectionFactory;
         this.roundChangeRepository = roundChangeRepository;
+        this.vectorTableManager    = vectorTableManager;
     }
 
     public async Task<MemoryEntry?> GetByIDAsync(long id, CancellationToken cancellationToken = default)
@@ -274,16 +276,130 @@ public sealed class MemoryRepository : IMemoryRepository
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
+        var (oldRow, projectID) = await GetRowAndProjectAsync(connection, id, cancellationToken);
+
+        await connection.ExecuteAsync("DELETE FROM memory_entries WHERE id = @id", new { id });
+
+        if (oldRow is not null)
+            await roundChangeRepository.RecordDeleteAsync(RoundContext.Current ?? 0, "memory_entries", id, JsonSerializer.Serialize(oldRow), cancellationToken);
+
+        if (projectID is not null)
+            await DeleteEmbeddingAsync(projectID.Value, id, cancellationToken);
+    }
+
+    private static async Task<(IDictionary<string, object>? row, long? projectID)> GetRowAndProjectAsync
+    (
+        Microsoft.Data.Sqlite.SqliteConnection connection,
+        long                                   id,
+        CancellationToken                      cancellationToken
+    )
+    {
         var oldRow = await connection.QueryFirstOrDefaultAsync<IDictionary<string, object>>
                      (
                          "SELECT * FROM memory_entries WHERE id = @id",
                          new { id }
                      );
 
-        await connection.ExecuteAsync("DELETE FROM memory_entries WHERE id = @id", new { id });
+        long? projectID = null;
 
-        if (oldRow is not null)
-            await roundChangeRepository.RecordDeleteAsync(RoundContext.Current ?? 0, "memory_entries", id, JsonSerializer.Serialize(oldRow), cancellationToken);
+        if (oldRow is not null && oldRow.TryGetValue("project_id", out var pid))
+            projectID = Convert.ToInt64(pid);
+
+        return (oldRow, projectID);
+    }
+
+    public async Task SaveEmbeddingAsync(long projectID, long entryID, byte[] embedding, string contentHash, CancellationToken cancellationToken = default)
+    {
+        var dimension = embedding.Length / sizeof(float);
+        var tableName = VectorTableManager.GetMemoryTableName(projectID);
+
+        await vectorTableManager.EnsureTableAsync(tableName, dimension, cancellationToken);
+
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
+        try
+        {
+            await connection.ExecuteAsync
+            (
+                $"INSERT OR REPLACE INTO \"{tableName}\" (entry_id, embedding) VALUES (@entryID, @embedding)",
+                new { entryID, embedding },
+                transaction
+            );
+
+            await connection.ExecuteAsync
+            (
+                "UPDATE memory_entries SET content_hash = @contentHash WHERE id = @entryID",
+                new { entryID, contentHash },
+                transaction
+            );
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+
+    public async Task DeleteEmbeddingAsync(long projectID, long entryID, CancellationToken cancellationToken = default)
+    {
+        var tableName = VectorTableManager.GetMemoryTableName(projectID);
+
+        if (!await vectorTableManager.TableExistsAsync(tableName, cancellationToken))
+            return;
+
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        await connection.ExecuteAsync
+        (
+            $"DELETE FROM \"{tableName}\" WHERE entry_id = @entryID",
+            new { entryID }
+        );
+    }
+
+    public async Task<IReadOnlyList<(long entryID, float distance)>> SearchByVectorAsync
+    (
+        long                projectID,
+        byte[]              queryVector,
+        int                 topK,
+        IReadOnlyList<long>? candidateIDs = null,
+        CancellationToken   cancellationToken = default
+    )
+    {
+        var tableName = VectorTableManager.GetMemoryTableName(projectID);
+
+        if (!await vectorTableManager.TableExistsAsync(tableName, cancellationToken))
+            return [];
+
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        var sql = candidateIDs is { Count: > 0 } ?
+            $"""
+            SELECT entry_id AS EntryID, distance AS Distance
+            FROM "{tableName}"
+            WHERE embedding MATCH @queryVector
+              AND entry_id IN @candidateIDs
+            ORDER BY distance
+            LIMIT @topK
+            """ :
+            $"""
+            SELECT entry_id AS EntryID, distance AS Distance
+            FROM "{tableName}"
+            WHERE embedding MATCH @queryVector
+            ORDER BY distance
+            LIMIT @topK
+            """;
+
+        var rows = await connection.QueryAsync<(long EntryID, float Distance)>
+                   (
+                       sql,
+                       new { queryVector, topK, candidateIDs }
+                   );
+
+        return rows.Select(r => (r.EntryID, r.Distance)).ToList();
     }
 
     private sealed class MemoryEntryRow
@@ -296,6 +412,7 @@ public sealed class MemoryRepository : IMemoryRepository
         public string Content               { get; set; } = string.Empty;
         public string Tags                  { get; set; } = "[]";
         public string Related_Character_IDs { get; set; } = "[]";
+        public string? Content_Hash         { get; set; }
         public string Created_At            { get; set; } = string.Empty;
         public string Updated_At            { get; set; } = string.Empty;
 
@@ -310,6 +427,7 @@ public sealed class MemoryRepository : IMemoryRepository
                 Content             = Content,
                 Tags                = JsonHelper.DeserializeStringArray(Tags),
                 RelatedCharacterIDs = JsonHelper.DeserializeInt64Array(Related_Character_IDs),
+                ContentHash         = Content_Hash,
                 CreatedAt           = DateTime.Parse(Created_At),
                 UpdatedAt           = DateTime.Parse(Updated_At)
             };

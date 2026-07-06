@@ -25,7 +25,7 @@ public sealed class Orchestrator
     private readonly ISessionRepository       sessionRepository;
     private readonly IKnowledgeRepository     knowledgeRepository;
     private readonly IMemoryRepository        memoryRepository;
-    private readonly IEmbeddingService        embeddingService;
+    private readonly IEmbeddingServiceFactory embeddingServiceFactory;
     private readonly ITimelineCalculator      timelineCalculator;
     private readonly IRoundChangeRepository   roundChangeRepository;
     private readonly OrchestratorConfig       config;
@@ -54,7 +54,7 @@ public sealed class Orchestrator
         ISessionRepository       sessionRepository,
         IKnowledgeRepository     knowledgeRepository,
         IMemoryRepository        memoryRepository,
-        IEmbeddingService        embeddingService,
+        IEmbeddingServiceFactory embeddingServiceFactory,
         ITimelineCalculator      timelineCalculator,
         IRoundChangeRepository   roundChangeRepository,
         OrchestratorConfig       config
@@ -70,15 +70,15 @@ public sealed class Orchestrator
         this.sessionRepository   = sessionRepository;
         this.knowledgeRepository = knowledgeRepository;
         this.memoryRepository    = memoryRepository;
-        this.embeddingService    = embeddingService;
+        this.embeddingServiceFactory = embeddingServiceFactory;
         this.timelineCalculator  = timelineCalculator;
         this.roundChangeRepository = roundChangeRepository;
         this.config              = config;
 
         sceneTools     = new SceneTools(sceneRepository, timelineCalculator);
-        knowledgeTools = new KnowledgeTools(knowledgeRepository, embeddingService);
+        knowledgeTools = new KnowledgeTools(knowledgeRepository, embeddingServiceFactory);
         stateTools     = new StateTools(stateRepository);
-        memoryTools    = new MemoryTools(memoryRepository, embeddingService);
+        memoryTools    = new MemoryTools(memoryRepository, embeddingServiceFactory);
         characterTools = new CharacterTools(characterRepository, stateRepository);
         auditTools     = new AuditTools();
 
@@ -89,6 +89,8 @@ public sealed class Orchestrator
             stateRepository,
             characterRepository,
             directiveRepository,
+            knowledgeRepository,
+            memoryRepository,
             knowledgeTools,
             memoryTools,
             config
@@ -119,7 +121,10 @@ public sealed class Orchestrator
             memoryTools,
             stateTools,
             characterTools,
-            config
+            config,
+            stateRepository,
+            characterRepository,
+            sceneRepository
         );
     }
 
@@ -163,8 +168,16 @@ public sealed class Orchestrator
             Log.Information("  指令 #{Order} [{Type}] {Content}", d.Order, d.Type, d.Content);
 
         onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.DirectiveProcessing, PipelineStageStatus.Running));
-        await ProcessDirectivesAsync(batch, sessionID, activeScene, cancellationToken);
+        var embeddingConfig = JsonSerializer.Deserialize<ModelConfig>(project.EmbeddingConfig) ?? new ModelConfig();
+        await ProcessDirectivesAsync(batch, sessionID, activeScene, embeddingConfig, cancellationToken);
         onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.DirectiveProcessing, PipelineStageStatus.Complete));
+
+        activeScene = await sceneRepository.GetActiveSceneAsync(sessionID, cancellationToken);
+
+        if (activeScene is null)
+            throw new InvalidOperationException("场景创建失败: Scene Agent 未调用 create_scene 工具");
+
+        timelinePosition = activeScene.TimelinePosition;
 
         var history = await BuildHistoryAsync(sessionID, roundID, cancellationToken);
 
@@ -175,9 +188,10 @@ public sealed class Orchestrator
             DirectiveBatch          = batch,
             RoundID                 = roundID,
             SessionID               = sessionID,
-            CurrentSceneID          = activeScene?.ID,
+            CurrentSceneID          = activeScene.ID,
             CurrentTimelinePosition = timelinePosition,
             Project                 = project,
+            EmbeddingConfig         = embeddingConfig,
             History                 = history,
             OnStreamingUpdate       = onStreamingUpdate,
             OnStageUpdate           = onStageUpdate
@@ -206,16 +220,6 @@ public sealed class Orchestrator
                 $"叙事长度={context.NarrativeOutput?.Length ?? 0}"
             )
         );
-
-        Log.Information
-        (
-            "Narrator 输出 (轮次={RoundID}):\n{Narrative}",
-            roundID,
-            context.NarrativeOutput ?? "(空)"
-        );
-
-        if (!string.IsNullOrWhiteSpace(context.ThinkingOutput))
-            Log.Debug("Narrator 思考 (轮次={RoundID}):\n{Thinking}", roundID, context.ThinkingOutput);
 
         await RecordEventAsync
         (
@@ -323,23 +327,51 @@ public sealed class Orchestrator
         DirectiveBatch    batch,
         long              sessionID,
         Scene?            activeScene,
+        ModelConfig       embeddingConfig,
         CancellationToken cancellationToken
     )
     {
+        if (activeScene is null)
+        {
+            var sceneChangeDirective = batch.Directives.FirstOrDefault(d => d.Type == DirectiveType.SceneChange);
+
+            if (sceneChangeDirective is not null)
+            {
+                Log.Information("无活跃场景, 通过 Scene Agent 创建: {Description}", sceneChangeDirective.Content);
+                await CreateSceneViaAgentAsync(batch.ProjectID, sessionID, sceneChangeDirective.Content, activeScene, embeddingConfig, cancellationToken);
+            }
+            else
+            {
+                Log.Information("无活跃场景且无 SceneChange 指令, 直接创建初始场景");
+
+                var existingScenes = await sceneRepository.GetOrderedByTimelineAsync(sessionID, cancellationToken);
+                var position       = timelineCalculator.CalculatePosition(null, null, existingScenes);
+
+                await sceneRepository.CreateAsync
+                (
+                    new Scene
+                    {
+                        ProjectID        = batch.ProjectID,
+                        SessionID        = sessionID,
+                        TimelinePosition = position,
+                        TimeLabel        = "初始场景",
+                        Status           = SceneStatus.Active
+                    },
+                    cancellationToken
+                );
+            }
+        }
+
         foreach (var directive in batch.Directives)
         {
             if (directive.Type is DirectiveType.Tone or DirectiveType.TemporaryConstraint)
             {
-                var ttl = directive.Type == DirectiveType.Tone ?
-                              5 :
-                              (int?)null;
-
                 Log.Information
                 (
                     "添加生效指令: 类型={Type}, 内容={Content}, TTL={TTL}",
                     directive.Type,
                     directive.Content,
-                    ttl?.ToString() ?? "永久"
+                    directive.TTL?.ToString() ?? "永久"
                 );
 
                 await directiveRepository.AddAsync
@@ -350,7 +382,7 @@ public sealed class Orchestrator
                         SessionID = sessionID,
                         Type      = directive.Type,
                         Content   = directive.Content,
-                        TTL       = ttl,
+                        TTL       = directive.TTL,
                         CreatedAt = DateTime.UtcNow
                     },
                     cancellationToken
@@ -358,7 +390,7 @@ public sealed class Orchestrator
             }
 
             if (directive.Type == DirectiveType.SceneChange)
-                await CreateSceneViaAgentAsync(batch.ProjectID, sessionID, directive.Content, activeScene, cancellationToken);
+                await CreateSceneViaAgentAsync(batch.ProjectID, sessionID, directive.Content, activeScene, embeddingConfig, cancellationToken);
         }
     }
 
@@ -368,6 +400,7 @@ public sealed class Orchestrator
         long              sessionID,
         string            description,
         Scene?            currentScene,
+        ModelConfig       embeddingConfig,
         CancellationToken cancellationToken
     )
     {
@@ -392,7 +425,8 @@ public sealed class Orchestrator
             sessionID,
             currentScene?.ID,
             currentScene?.TimelinePosition ?? 0,
-            0
+            0,
+            embeddingConfig
         );
 
         var client = chatClientFactory.Create(sceneAgent.ModelConfig);
@@ -411,9 +445,50 @@ public sealed class Orchestrator
             Tools       = [.. tools]
         };
 
-        await client.GetResponseAsync(messages, options, cancellationToken);
+        const int maxSceneRetries = 5;
 
-        Log.Information("场景创建完成");
+        for (var attempt = 1; attempt <= maxSceneRetries; attempt++)
+        {
+            var response = await client.GetResponseAsync(messages, options, cancellationToken);
+
+            var responseText = response.Messages.FirstOrDefault()?.Text ?? "(空)";
+
+            Log.Information
+            (
+                "Scene Agent 返回 (尝试 {Attempt}/{MaxRetries}): {Text}",
+                attempt,
+                maxSceneRetries,
+                responseText.Length > 200 ? responseText[..200] + "..." : responseText
+            );
+
+            var sceneAfterAgent = await sceneRepository.GetActiveSceneAsync(sessionID, cancellationToken);
+
+            if (sceneAfterAgent is not null)
+            {
+                Log.Information("场景创建完成: sceneID={SceneID}", sceneAfterAgent.ID);
+                return;
+            }
+
+            Log.Warning
+            (
+                "Scene Agent 未调用 create_scene 工具, 重试 {Attempt}/{MaxRetries}",
+                attempt,
+                maxSceneRetries
+            );
+
+            if (attempt < maxSceneRetries)
+            {
+                messages = new List<ChatMessage>
+                {
+                    new
+                    (
+                        ChatRole.System,
+                        SceneAgentPrompt.System + "\n\n注意: 你之前没有调用 create_scene 工具, 这是强制要求。请立即调用 create_scene 工具创建场景, 不要只回复文本。"
+                    ),
+                    new(ChatRole.User, description)
+                };
+            }
+        }
     }
 
     private async Task RunAuditLoopAsync(PipelineContext context, CancellationToken cancellationToken)
@@ -551,19 +626,6 @@ public sealed class Orchestrator
             roundID,
             data.Length
         );
-
-        if (type == EventType.NarrativeOutput && data.Length > 0)
-        {
-            Log.Debug
-            (
-                "  事件数据 (NarrativeOutput): {Data}",
-                data.Length > 500 ?
-                    data[..500] + "..." :
-                    data
-            );
-        }
-        else if (type == EventType.DirectorInput)
-            Log.Debug("  事件数据 (DirectorInput): {Data}", data);
 
         var eventItem = new PlaythroughEvent
         {

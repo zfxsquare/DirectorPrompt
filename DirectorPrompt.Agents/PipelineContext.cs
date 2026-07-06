@@ -1,3 +1,4 @@
+using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 
@@ -45,8 +46,11 @@ public sealed class PipelineContext
         SessionID,
         CurrentSceneID,
         CurrentTimelinePosition,
-        RoundID
+        RoundID,
+        EmbeddingConfig
     );
+
+    public required ModelConfig EmbeddingConfig { get; init; }
 }
 
 public record ChatHistoryEntry

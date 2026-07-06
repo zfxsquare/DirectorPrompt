@@ -17,6 +17,8 @@ public sealed class RetrievalStage
     private readonly IStateRepository     stateRepository;
     private readonly ICharacterRepository characterRepository;
     private readonly IDirectiveRepository directiveRepository;
+    private readonly IKnowledgeRepository knowledgeRepository;
+    private readonly IMemoryRepository    memoryRepository;
     private readonly KnowledgeTools       knowledgeTools;
     private readonly MemoryTools          memoryTools;
     private readonly OrchestratorConfig   orchestratorConfig;
@@ -28,6 +30,8 @@ public sealed class RetrievalStage
         IStateRepository     stateRepository,
         ICharacterRepository characterRepository,
         IDirectiveRepository directiveRepository,
+        IKnowledgeRepository knowledgeRepository,
+        IMemoryRepository    memoryRepository,
         KnowledgeTools       knowledgeTools,
         MemoryTools          memoryTools,
         OrchestratorConfig   orchestratorConfig
@@ -38,6 +42,8 @@ public sealed class RetrievalStage
         this.stateRepository     = stateRepository;
         this.characterRepository = characterRepository;
         this.directiveRepository = directiveRepository;
+        this.knowledgeRepository = knowledgeRepository;
+        this.memoryRepository    = memoryRepository;
         this.knowledgeTools      = knowledgeTools;
         this.memoryTools         = memoryTools;
         this.orchestratorConfig  = orchestratorConfig;
@@ -86,7 +92,15 @@ public sealed class RetrievalStage
             return string.Empty;
         }
 
-        Log.Information("知识检索: 模型={Model}", knowledgeAgent.ModelConfig.ModelName);
+        var entries = await knowledgeRepository.GetActiveEntriesAsync(context.DirectiveBatch.ProjectID, cancellationToken);
+
+        if (entries.Count == 0)
+        {
+            Log.Information("知识检索: 无知识条目, 跳过 AI 调用");
+            return "无可用知识";
+        }
+
+        Log.Information("知识检索: 模型={Model}, 条目数={Count}", knowledgeAgent.ModelConfig.ModelName, entries.Count);
 
         var client        = chatClientFactory.Create(knowledgeAgent.ModelConfig);
         var tools         = knowledgeTools.Create(context.ToolContext);
@@ -128,7 +142,15 @@ public sealed class RetrievalStage
             return string.Empty;
         }
 
-        Log.Information("记忆检索: 模型={Model}", memoryAgent.ModelConfig.ModelName);
+        var memories = await memoryRepository.GetBySessionAsync(context.SessionID, context.CurrentTimelinePosition, cancellationToken);
+
+        if (memories.Count == 0)
+        {
+            Log.Information("记忆检索: 无记忆条目, 跳过 AI 调用");
+            return "无可用记忆";
+        }
+
+        Log.Information("记忆检索: 模型={Model}, 条目数={Count}", memoryAgent.ModelConfig.ModelName, memories.Count);
 
         var client        = chatClientFactory.Create(memoryAgent.ModelConfig);
         var tools         = memoryTools.Create(context.ToolContext);
@@ -192,7 +214,7 @@ public sealed class RetrievalStage
             foreach (var attr in attributes)
             {
                 var value = await stateRepository.GetStateValueAsync(attr.ID, context.SessionID, cancellationToken);
-                sb.AppendLine($"- {attr.DisplayName}: {value?.Value ?? "未设置"}");
+                sb.AppendLine($"- {attr.DisplayName} ({attr.Name}): {value?.Value ?? "未设置"}");
             }
 
             sb.AppendLine();

@@ -4,6 +4,7 @@ using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 using DirectorPrompt.Domain.Services;
 using Microsoft.Extensions.AI;
+using Serilog;
 
 namespace DirectorPrompt.Agents.Tools;
 
@@ -37,6 +38,8 @@ public sealed class SceneTools
 
     private async Task<string> QuerySceneAsync(ToolExecutionContext context)
     {
+        Log.Information("工具调用: query_scene");
+
         var scenes = await sceneRepository.GetOrderedByTimelineAsync(context.SessionID);
         var result = scenes.Select
         (s => new
@@ -59,6 +62,7 @@ public sealed class SceneTools
         string               timeLabel
     )
     {
+        Log.Information("工具调用: create_scene(timeLabel={TimeLabel})", timeLabel);
         if (string.IsNullOrWhiteSpace(timeLabel))
             return JsonSerializer.Serialize(new { error = "timeLabel 不能为空" });
 
@@ -85,6 +89,8 @@ public sealed class SceneTools
         };
 
         var created = await sceneRepository.CreateAsync(scene);
+
+        Log.Information("工具调用完成: create_scene, sceneID={ID}, timelinePosition={Position}", created.ID, position);
 
         return JsonSerializer.Serialize(new { sceneID = created.ID, timelinePosition = position });
     }

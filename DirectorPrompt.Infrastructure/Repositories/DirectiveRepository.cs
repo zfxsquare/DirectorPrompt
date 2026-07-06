@@ -51,7 +51,7 @@ public sealed class DirectiveRepository : IDirectiveRepository
                      {
                          projectID = directive.ProjectID,
                          sessionID = directive.SessionID,
-                         type      = directive.Type.ToString().ToLowerInvariant(),
+                         type      = JsonNamingPolicy.SnakeCaseLower.ConvertName(directive.Type.ToString()),
                          content   = directive.Content,
                          ttl       = directive.TTL,
                          createdAt = directive.CreatedAt.ToString("O")
@@ -81,8 +81,7 @@ public sealed class DirectiveRepository : IDirectiveRepository
 
     public async Task<IReadOnlyList<ActiveDirective>> DecrementTTLAsync(long sessionID, CancellationToken cancellationToken = default)
     {
-        await using var connection  = await connectionFactory.CreateAsync(cancellationToken);
-        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
         var affectedRows = await connection.QueryAsync
                            (
@@ -90,8 +89,7 @@ public sealed class DirectiveRepository : IDirectiveRepository
                                SELECT id, ttl FROM active_directives
                                WHERE session_id = @sessionID AND ttl IS NOT NULL
                                """,
-                               new { sessionID },
-                               transaction
+                               new { sessionID }
                            );
 
         foreach (var row in affectedRows)
@@ -102,8 +100,7 @@ public sealed class DirectiveRepository : IDirectiveRepository
             await connection.ExecuteAsync
             (
                 "UPDATE active_directives SET ttl = ttl - 1 WHERE id = @id",
-                new { id = (long)row.id },
-                transaction
+                new { id = (long)row.id }
             );
 
             await roundChangeRepository.RecordUpdateAsync
@@ -122,15 +119,13 @@ public sealed class DirectiveRepository : IDirectiveRepository
                               SELECT * FROM active_directives
                               WHERE session_id = @sessionID AND ttl IS NOT NULL AND ttl <= 0
                               """,
-                              new { sessionID },
-                              transaction
+                              new { sessionID }
                           );
 
         await connection.ExecuteAsync
         (
             "DELETE FROM active_directives WHERE session_id = @sessionID AND ttl IS NOT NULL AND ttl <= 0",
-            new { sessionID },
-            transaction
+            new { sessionID }
         );
 
         foreach (var row in expiredRows)
@@ -153,11 +148,8 @@ public sealed class DirectiveRepository : IDirectiveRepository
                          AND (ttl IS NULL OR ttl > 0)
                        ORDER BY id
                        """,
-                       new { sessionID },
-                       transaction
+                       new { sessionID }
                    );
-
-        await transaction.CommitAsync(cancellationToken);
 
         return rows.Select(r => r.ToActiveDirective()).ToList();
     }

@@ -3,6 +3,7 @@ using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 using Microsoft.Extensions.AI;
+using Serilog;
 
 namespace DirectorPrompt.Agents.Tools;
 
@@ -212,6 +213,7 @@ public sealed class CharacterTools
         string               reason
     )
     {
+        Log.Information("工具调用: add_character(name={Name}, reason={Reason})", name, reason);
         var existing = await characterRepository.GetByNameAsync(context.SessionID, name);
 
         if (existing is not null)
@@ -235,11 +237,14 @@ public sealed class CharacterTools
 
         var created = await characterRepository.CreateAsync(character);
 
+        Log.Information("工具调用完成: add_character, characterID={ID}, name={Name}", created.ID, name);
+
         return JsonSerializer.Serialize(new { characterID = created.ID });
     }
 
     private async Task<string> RemoveCharacterAsync(ToolExecutionContext context, string name, string reason)
     {
+        Log.Information("工具调用: remove_character(name={Name}, reason={Reason})", name, reason);
         var character = await characterRepository.GetByNameAsync(context.SessionID, name);
 
         if (character is null)
@@ -314,6 +319,7 @@ public sealed class CharacterTools
 
     private async Task<string> EnterSceneAsync(ToolExecutionContext context, string name)
     {
+        Log.Information("工具调用: enter_scene(name={Name})", name);
         if (context.SceneID is null)
             return JsonSerializer.Serialize(new { error = "当前没有活跃场景" });
 
@@ -324,11 +330,14 @@ public sealed class CharacterTools
 
         await characterRepository.EnterSceneAsync(character.ID, context.SceneID.Value);
 
+        Log.Information("工具调用完成: enter_scene, name={Name}, sceneID={SceneID}", name, context.SceneID.Value);
+
         return JsonSerializer.Serialize(new { name, sceneID = context.SceneID.Value });
     }
 
     private async Task<string> LeaveSceneAsync(ToolExecutionContext context, string name)
     {
+        Log.Information("工具调用: leave_scene(name={Name})", name);
         if (context.SceneID is null)
             return JsonSerializer.Serialize(new { error = "当前没有活跃场景" });
 

@@ -1,4 +1,5 @@
 using System.ClientModel;
+using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Services;
 using Microsoft.Extensions.AI;
 using OpenAI;
@@ -18,6 +19,10 @@ public sealed class EmbeddingService : IEmbeddingService
         this.endpoint  = endpoint;
         this.apiKey    = apiKey;
         this.modelName = modelName;
+    }
+
+    public EmbeddingService(ModelConfig config) : this(config.Provider, config.Endpoint, config.APIKey, config.ModelName)
+    {
     }
 
     public async Task<float[]> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken = default)
@@ -78,4 +83,9 @@ public sealed class EmbeddingService : IEmbeddingService
 
         throw new ArgumentException("APIKey 不能为空");
     }
+}
+
+public sealed class EmbeddingServiceFactory : IEmbeddingServiceFactory
+{
+    public IEmbeddingService Create(ModelConfig config) => new EmbeddingService(config);
 }

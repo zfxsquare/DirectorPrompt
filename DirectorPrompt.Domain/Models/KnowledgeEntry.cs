@@ -16,7 +16,10 @@ public record KnowledgeEntry
 
     public bool Active { get; init; } = true;
 
+    public string? ContentHash { get; init; }
+
     public DateTime CreatedAt { get; init; }
 
     public DateTime UpdatedAt { get; init; }
 }
+

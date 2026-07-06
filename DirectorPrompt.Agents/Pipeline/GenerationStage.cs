@@ -10,23 +10,12 @@ using Serilog;
 namespace DirectorPrompt.Agents.Pipeline;
 
 public sealed class GenerationStage
+(
+    IChatClientFactory chatClientFactory,
+    KnowledgeTools     knowledgeTools,
+    OrchestratorConfig orchestratorConfig
+)
 {
-    private readonly IChatClientFactory chatClientFactory;
-    private readonly KnowledgeTools     knowledgeTools;
-    private readonly OrchestratorConfig orchestratorConfig;
-
-    public GenerationStage
-    (
-        IChatClientFactory chatClientFactory,
-        KnowledgeTools     knowledgeTools,
-        OrchestratorConfig orchestratorConfig
-    )
-    {
-        this.chatClientFactory  = chatClientFactory;
-        this.knowledgeTools     = knowledgeTools;
-        this.orchestratorConfig = orchestratorConfig;
-    }
-
     public async Task ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
     {
         var narratorAgent = orchestratorConfig.Agents.FirstOrDefault(a => a.Role == AgentRole.Narrator);

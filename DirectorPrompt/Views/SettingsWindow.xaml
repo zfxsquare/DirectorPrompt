@@ -6,13 +6,12 @@
                  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
                  xmlns:vm="clr-namespace:DirectorPrompt.ViewModels"
                  xmlns:converters="clr-namespace:DirectorPrompt.Converters"
-                 xmlns:enums="clr-namespace:DirectorPrompt.Domain.Enums;assembly=DirectorPrompt.Domain"
                  xmlns:loc="clr-namespace:DirectorPrompt.Localization"
                  mc:Ignorable="d"
                  d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}"
                  Title="{Binding [Settings.Title], Source={x:Static loc:Loc.Instance}}"
-                 Width="760"
-                 Height="600"
+                 Width="960"
+                 Height="800"
                  MinWidth="600"
                  MinHeight="480"
                  ExtendsContentIntoTitleBar="True"
@@ -93,12 +92,8 @@
                                         <ui:CardExpander Margin="0,0,0,8" IsExpanded="True">
                                             <ui:CardExpander.Header>
                                                 <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="{Binding Name}"
-                                                               FontWeight="SemiBold"
-                                                               VerticalAlignment="Center"
-                                                               Margin="0,0,8,0" />
                                                     <TextBlock Text="{Binding RoleDisplay}"
-                                                               Foreground="Gray"
+                                                               FontWeight="SemiBold"
                                                                VerticalAlignment="Center"
                                                                Margin="0,0,8,0" />
                                                     <TextBlock Text="{Binding ModelName}"
@@ -108,33 +103,15 @@
                                             </ui:CardExpander.Header>
 
                                             <StackPanel>
+                                                
                                                 <Grid Margin="0,0,0,8">
                                                     <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="100" />
-                                                        <ColumnDefinition Width="*" />
                                                         <ColumnDefinition Width="100" />
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Grid.Column="0"
-                                                               Text="{Binding [Settings.Agent.Name], Source={x:Static loc:Loc.Instance}}"
-                                                               VerticalAlignment="Center" />
-                                                    <ui:TextBox Grid.Column="1"
-                                                                Margin="0,0,8,0"
-                                                                Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" />
-                                                    <TextBlock Grid.Column="2"
-                                                               Text="{Binding [Settings.Agent.Role], Source={x:Static loc:Loc.Instance}}"
-                                                               VerticalAlignment="Center" />
-                                                    <ComboBox Grid.Column="3"
-                                                              ItemsSource="{Binding Source={x:Type enums:AgentRole}, Converter={StaticResource EnumDisplay}}"
-                                                              SelectedItem="{Binding Role, Converter={StaticResource EnumDisplay}}" />
-                                                </Grid>
-
-                                                <Grid Margin="0,0,0,8">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="100" />
-                                                        <ColumnDefinition Width="*" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBlock Grid.Column="0" Text="Provider"
+                                                               Text="{Binding [Settings.Agent.Provider], 
+                                                               Source={x:Static loc:Loc.Instance}}"
                                                                VerticalAlignment="Center" />
                                                     <ComboBox Grid.Column="1"
                                                               ItemsSource="{x:Static vm:AgentSettingViewModel.AvailableProviders}"
@@ -146,7 +123,9 @@
                                                         <ColumnDefinition Width="100" />
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock Grid.Column="0" Text="Endpoint"
+                                                    <TextBlock Grid.Column="0" 
+                                                               Text="{Binding [Settings.Agent.Endpoint], 
+                                                               Source={x:Static loc:Loc.Instance}}"
                                                                VerticalAlignment="Center" />
                                                     <ui:TextBox Grid.Column="1"
                                                                 Text="{Binding Endpoint, UpdateSourceTrigger=PropertyChanged}"
@@ -180,63 +159,59 @@
                                                 <Grid Margin="0,0,0,8">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="100" />
-                                                        <ColumnDefinition Width="120" />
-                                                        <ColumnDefinition Width="100" />
-                                                        <ColumnDefinition Width="120" />
+                                                        <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Grid.Column="0"
                                                                Text="{Binding [Settings.Agent.Temperature], Source={x:Static loc:Loc.Instance}}"
                                                                VerticalAlignment="Center" />
                                                     <ui:NumberBox Grid.Column="1"
-                                                                  Margin="0,0,8,0"
                                                                   Value="{Binding Temperature}"
                                                                   Minimum="0"
                                                                   Maximum="2"
                                                                   SpinButtonPlacementMode="Compact" />
-                                                    <TextBlock Grid.Column="2"
-                                                               Text="{Binding [Settings.Agent.MaxRetries], Source={x:Static loc:Loc.Instance}}"
-                                                               VerticalAlignment="Center" />
-                                                    <ui:NumberBox Grid.Column="3"
-                                                                  Value="{Binding MaxRetries}"
-                                                                  Minimum="0"
-                                                                  Maximum="10"
-                                                                  SpinButtonPlacementMode="Compact" />
                                                 </Grid>
+                                                
+                                                <Grid Margin="0,8,0,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="100" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <ui:Button
+                                                        Grid.Column="0"
+                                                        Content="{Binding [Settings.Agent.TestConnection], Source={x:Static loc:Loc.Instance}}"
+                                                        Icon="PlugConnected24"
+                                                        Appearance="Secondary"
+                                                        Margin="0,0,0,0"
+                                                        Command="{Binding DataContext.TestAgentConnectionCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
+                                                        CommandParameter="{Binding}"
+                                                        IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBool}}" />
 
-                                                <CheckBox
-                                                    Content="{Binding [Settings.Agent.Enabled], Source={x:Static loc:Loc.Instance}}"
-                                                    IsChecked="{Binding Enabled}"
-                                                    Margin="0,4,0,0" />
-
-                                                <ui:Button
-                                                    Content="{Binding [Settings.Agent.TestConnection], Source={x:Static loc:Loc.Instance}}"
-                                                    Icon="PlugConnected24"
-                                                    Appearance="Secondary"
-                                                    Margin="0,12,0,0"
-                                                    Command="{Binding DataContext.TestAgentConnectionCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
-                                                    CommandParameter="{Binding}"
-                                                    IsEnabled="{Binding IsTestingConnection, Converter={StaticResource InverseBool}}" />
-
-                                                <TextBlock Text="{Binding ConnectionMessage}"
-                                                           Margin="0,4,0,0"
-                                                           TextWrapping="Wrap"
-                                                           FontSize="12">
-                                                    <TextBlock.Style>
-                                                        <Style TargetType="TextBlock">
-                                                            <Setter Property="Foreground" Value="Gray" />
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding ConnectionSuccess}"
-                                                                             Value="True">
-                                                                    <Setter Property="Foreground" Value="#107C10" />
-                                                                </DataTrigger>
-                                                                <DataTrigger Binding="{Binding ConnectionSuccess}"
-                                                                             Value="False">
-                                                                    <Setter Property="Foreground" Value="OrangeRed" />
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </TextBlock.Style>
-                                                </TextBlock>
+                                                    <TextBlock
+                                                        Grid.Column="1"
+                                                        Text="{Binding ConnectionMessage}"
+                                                        Margin="0,0,0,0"
+                                                        TextWrapping="Wrap"
+                                                        VerticalAlignment="Center"
+                                                        FontSize="12">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="Gray" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding ConnectionSuccess}"
+                                                                            Value="True">
+                                                                        <Setter Property="Foreground" Value="#107C10" />
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding ConnectionSuccess}"
+                                                                            Value="False">
+                                                                        <Setter Property="Foreground" Value="OrangeRed" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    
+                                                </Grid>
+                                                
                                             </StackPanel>
                                         </ui:CardExpander>
                                     </DataTemplate>

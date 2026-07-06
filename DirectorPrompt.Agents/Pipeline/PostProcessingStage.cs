@@ -10,43 +10,22 @@ using Serilog;
 namespace DirectorPrompt.Agents.Pipeline;
 
 public sealed class PostProcessingStage
+(
+    IChatClientFactory   chatClientFactory,
+    MemoryTools          memoryTools,
+    StateTools           stateTools,
+    CharacterTools       characterTools,
+    OrchestratorConfig   orchestratorConfig,
+    IStateRepository     stateRepository,
+    ICharacterRepository characterRepository,
+    ISceneRepository     sceneRepository
+)
 {
-    private readonly IChatClientFactory   chatClientFactory;
-    private readonly MemoryTools          memoryTools;
-    private readonly StateTools           stateTools;
-    private readonly CharacterTools       characterTools;
-    private readonly OrchestratorConfig   orchestratorConfig;
-    private readonly IStateRepository     stateRepository;
-    private readonly ICharacterRepository characterRepository;
-    private readonly ISceneRepository     sceneRepository;
-
-    public PostProcessingStage
-    (
-        IChatClientFactory   chatClientFactory,
-        MemoryTools          memoryTools,
-        StateTools           stateTools,
-        CharacterTools       characterTools,
-        OrchestratorConfig   orchestratorConfig,
-        IStateRepository     stateRepository,
-        ICharacterRepository characterRepository,
-        ISceneRepository     sceneRepository
-    )
-    {
-        this.chatClientFactory   = chatClientFactory;
-        this.memoryTools         = memoryTools;
-        this.stateTools          = stateTools;
-        this.characterTools      = characterTools;
-        this.orchestratorConfig  = orchestratorConfig;
-        this.stateRepository     = stateRepository;
-        this.characterRepository = characterRepository;
-        this.sceneRepository     = sceneRepository;
-    }
-
     public async Task ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
     {
         var memoryAgent = orchestratorConfig.Agents.FirstOrDefault(a => a.Role == AgentRole.Memory);
 
-        if (memoryAgent is null || !memoryAgent.Enabled)
+        if (memoryAgent is null)
         {
             Log.Debug("PostProcessingStage: Memory Agent 未启用, 跳过");
             return;

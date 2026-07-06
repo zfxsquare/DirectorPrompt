@@ -1,56 +1,43 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using DirectorPrompt.Domain.Enums;
+using DirectorPrompt.Localization;
 
 namespace DirectorPrompt.ViewModels;
 
 public sealed partial class AgentSettingViewModel : ObservableObject
 {
     [ObservableProperty]
-    private string name = string.Empty;
+    public partial AgentRole Role { get; set; }
+    
+    [ObservableProperty]
+    public partial string Provider { get; set; } = "openai";
+    
+    [ObservableProperty]
+    public partial string Endpoint { get; set; } = string.Empty;
+    
+    [ObservableProperty]
+    public partial string APIKey { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private AgentRole role;
+    public partial string ModelName { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private string provider = "openai";
+    public partial float Temperature { get; set; }
 
     [ObservableProperty]
-    private string endpoint = string.Empty;
-
-    private string apiKey = string.Empty;
-
-    public string APIKey
-    {
-        get => apiKey;
-        set => SetProperty(ref apiKey, value);
-    }
+    public partial bool IsTestingConnection { get; set; }
 
     [ObservableProperty]
-    private string modelName = string.Empty;
+    public partial string ConnectionMessage { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private float temperature;
-
-    [ObservableProperty]
-    private bool enabled = true;
-
-    [ObservableProperty]
-    private int? maxRetries;
-
-    [ObservableProperty]
-    private bool isTestingConnection;
-
-    [ObservableProperty]
-    private string connectionMessage = string.Empty;
-
-    [ObservableProperty]
-    private bool? connectionSuccess;
+    public partial bool? ConnectionSuccess { get; set; }
 
     public string SystemPrompt { get; set; } = string.Empty;
 
     public string[] Tools { get; set; } = [];
 
-    public string RoleDisplay => Role.GetDescription();
+    public string RoleDisplay => Loc.Get($"Agent.Role.{Role}");
 
     public static string[] AvailableProviders { get; } = ["openai", "ollama", "custom"];
 }

@@ -18,20 +18,23 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         WriteIndented          = true,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        Converters             = { new JsonStringEnumConverter() }
+        Converters =
+        {
+            new JsonStringEnumConverter()
+        }
     };
 
     private readonly IModelConnectionTester connectionTester;
     private readonly ILocalizationService   localizationService;
 
     [ObservableProperty]
-    private bool isSaving;
+    public partial bool IsSaving { get; set; }
 
     [ObservableProperty]
-    private string validationMessage = string.Empty;
+    public partial string ValidationMessage { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private string selectedLanguage = string.Empty;
+    public partial string SelectedLanguage { get; set; } = string.Empty;
 
     public ObservableCollection<AgentSettingViewModel> Agents { get; } = [];
 
@@ -63,16 +66,15 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     private void LoadAgents(List<AgentDefinition> agents)
     {
-        if (agents is null || agents.Count == 0)
+        if (agents is not { Count: > 0 })
             return;
 
         foreach (var agent in agents)
         {
             Agents.Add
             (
-                new AgentSettingViewModel
+                new()
                 {
-                    Name         = agent.Name,
                     Role         = agent.Role,
                     Provider     = agent.ModelConfig.Provider,
                     Endpoint     = agent.ModelConfig.Endpoint,
@@ -81,8 +83,6 @@ public sealed partial class SettingsViewModel : ObservableObject
                     SystemPrompt = agent.SystemPrompt,
                     Temperature  = agent.Temperature,
                     Tools        = agent.Tools,
-                    Enabled      = agent.Enabled,
-                    MaxRetries   = agent.MaxRetries
                 }
             );
         }
@@ -128,7 +128,6 @@ public sealed partial class SettingsViewModel : ObservableObject
         var agents = Agents.Select
         (a => new AgentDefinition
             {
-                Name = a.Name,
                 Role = a.Role,
                 ModelConfig = new ModelConfig
                 {
@@ -140,8 +139,6 @@ public sealed partial class SettingsViewModel : ObservableObject
                 SystemPrompt = a.SystemPrompt,
                 Temperature  = a.Temperature,
                 Tools        = a.Tools,
-                Enabled      = a.Enabled,
-                MaxRetries   = a.MaxRetries
             }
         ).ToList();
 

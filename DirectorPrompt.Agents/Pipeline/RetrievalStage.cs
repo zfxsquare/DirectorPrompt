@@ -11,44 +11,19 @@ using Serilog;
 namespace DirectorPrompt.Agents.Pipeline;
 
 public sealed class RetrievalStage
+(
+    IChatClientFactory   chatClientFactory,
+    ISceneRepository     sceneRepository,
+    IStateRepository     stateRepository,
+    ICharacterRepository characterRepository,
+    IDirectiveRepository directiveRepository,
+    IKnowledgeRepository knowledgeRepository,
+    IMemoryRepository    memoryRepository,
+    KnowledgeTools       knowledgeTools,
+    MemoryTools          memoryTools,
+    OrchestratorConfig   orchestratorConfig
+)
 {
-    private readonly IChatClientFactory   chatClientFactory;
-    private readonly ISceneRepository     sceneRepository;
-    private readonly IStateRepository     stateRepository;
-    private readonly ICharacterRepository characterRepository;
-    private readonly IDirectiveRepository directiveRepository;
-    private readonly IKnowledgeRepository knowledgeRepository;
-    private readonly IMemoryRepository    memoryRepository;
-    private readonly KnowledgeTools       knowledgeTools;
-    private readonly MemoryTools          memoryTools;
-    private readonly OrchestratorConfig   orchestratorConfig;
-
-    public RetrievalStage
-    (
-        IChatClientFactory   chatClientFactory,
-        ISceneRepository     sceneRepository,
-        IStateRepository     stateRepository,
-        ICharacterRepository characterRepository,
-        IDirectiveRepository directiveRepository,
-        IKnowledgeRepository knowledgeRepository,
-        IMemoryRepository    memoryRepository,
-        KnowledgeTools       knowledgeTools,
-        MemoryTools          memoryTools,
-        OrchestratorConfig   orchestratorConfig
-    )
-    {
-        this.chatClientFactory   = chatClientFactory;
-        this.sceneRepository     = sceneRepository;
-        this.stateRepository     = stateRepository;
-        this.characterRepository = characterRepository;
-        this.directiveRepository = directiveRepository;
-        this.knowledgeRepository = knowledgeRepository;
-        this.memoryRepository    = memoryRepository;
-        this.knowledgeTools      = knowledgeTools;
-        this.memoryTools         = memoryTools;
-        this.orchestratorConfig  = orchestratorConfig;
-    }
-
     public async Task ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
     {
         Log.Information("RetrievalStage 开始: 对话={SessionID}, 轮次={RoundID}", context.SessionID, context.RoundID);
@@ -86,7 +61,7 @@ public sealed class RetrievalStage
     {
         var knowledgeAgent = orchestratorConfig.Agents.FirstOrDefault(a => a.Role == AgentRole.Knowledge);
 
-        if (knowledgeAgent is null || !knowledgeAgent.Enabled)
+        if (knowledgeAgent is null)
         {
             Log.Debug("Knowledge Agent 未启用, 跳过知识检索");
             return string.Empty;
@@ -136,7 +111,7 @@ public sealed class RetrievalStage
     {
         var memoryAgent = orchestratorConfig.Agents.FirstOrDefault(a => a.Role == AgentRole.Memory);
 
-        if (memoryAgent is null || !memoryAgent.Enabled)
+        if (memoryAgent is null)
         {
             Log.Debug("Memory Agent 未启用, 跳过记忆检索");
             return string.Empty;

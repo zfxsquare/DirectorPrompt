@@ -8,38 +8,17 @@ using Serilog;
 namespace DirectorPrompt.Agents.Pipeline;
 
 public sealed class AuditStage
+(
+    IChatClientFactory chatClientFactory,
+    SceneTools         sceneTools,
+    KnowledgeTools     knowledgeTools,
+    StateTools         stateTools,
+    MemoryTools        memoryTools,
+    CharacterTools     characterTools,
+    AuditTools         auditTools,
+    OrchestratorConfig orchestratorConfig
+)
 {
-    private readonly IChatClientFactory chatClientFactory;
-    private readonly SceneTools         sceneTools;
-    private readonly KnowledgeTools     knowledgeTools;
-    private readonly StateTools         stateTools;
-    private readonly MemoryTools        memoryTools;
-    private readonly CharacterTools     characterTools;
-    private readonly AuditTools         auditTools;
-    private readonly OrchestratorConfig orchestratorConfig;
-
-    public AuditStage
-    (
-        IChatClientFactory chatClientFactory,
-        SceneTools         sceneTools,
-        KnowledgeTools     knowledgeTools,
-        StateTools         stateTools,
-        MemoryTools        memoryTools,
-        CharacterTools     characterTools,
-        AuditTools         auditTools,
-        OrchestratorConfig orchestratorConfig
-    )
-    {
-        this.chatClientFactory  = chatClientFactory;
-        this.sceneTools         = sceneTools;
-        this.knowledgeTools     = knowledgeTools;
-        this.stateTools         = stateTools;
-        this.memoryTools        = memoryTools;
-        this.characterTools     = characterTools;
-        this.auditTools         = auditTools;
-        this.orchestratorConfig = orchestratorConfig;
-    }
-
     public async Task ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
     {
         var auditConfig = orchestratorConfig.AuditConfig;
@@ -53,7 +32,7 @@ public sealed class AuditStage
 
         var auditAgent = orchestratorConfig.Agents.FirstOrDefault(a => a.Role == AgentRole.Audit);
 
-        if (auditAgent is null || !auditAgent.Enabled)
+        if (auditAgent is null)
         {
             Log.Information("AuditStage: Audit Agent 未启用, 跳过");
             context.AuditPassed = true;

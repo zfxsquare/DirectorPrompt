@@ -60,20 +60,20 @@ public sealed class Orchestrator
         OrchestratorConfig       config
     )
     {
-        this.chatClientFactory   = chatClientFactory;
-        this.sceneRepository     = sceneRepository;
-        this.stateRepository     = stateRepository;
-        this.characterRepository = characterRepository;
-        this.directiveRepository = directiveRepository;
-        this.eventRepository     = eventRepository;
-        this.projectRepository   = projectRepository;
-        this.sessionRepository   = sessionRepository;
-        this.knowledgeRepository = knowledgeRepository;
-        this.memoryRepository    = memoryRepository;
+        this.chatClientFactory       = chatClientFactory;
+        this.sceneRepository         = sceneRepository;
+        this.stateRepository         = stateRepository;
+        this.characterRepository     = characterRepository;
+        this.directiveRepository     = directiveRepository;
+        this.eventRepository         = eventRepository;
+        this.projectRepository       = projectRepository;
+        this.sessionRepository       = sessionRepository;
+        this.knowledgeRepository     = knowledgeRepository;
+        this.memoryRepository        = memoryRepository;
         this.embeddingServiceFactory = embeddingServiceFactory;
-        this.timelineCalculator  = timelineCalculator;
-        this.roundChangeRepository = roundChangeRepository;
-        this.config              = config;
+        this.timelineCalculator      = timelineCalculator;
+        this.roundChangeRepository   = roundChangeRepository;
+        this.config                  = config;
 
         sceneTools     = new SceneTools(sceneRepository, timelineCalculator);
         knowledgeTools = new KnowledgeTools(knowledgeRepository, embeddingServiceFactory);
@@ -153,145 +153,145 @@ public sealed class Orchestrator
 
         using (RoundContext.Enter(roundID))
         {
-        Log.Information
-        (
-            "Orchestrator 开始处理批次: 项目={ProjectID} ({ProjectName}), 对话={SessionID}, 轮次={RoundID}, 场景={SceneID}, 指令数={DirectiveCount}",
-            batch.ProjectID,
-            project.Name,
-            sessionID,
-            roundID,
-            activeScene?.ID,
-            batch.Directives.Count
-        );
-
-        foreach (var d in batch.Directives)
-            Log.Information("  指令 #{Order} [{Type}] {Content}", d.Order, d.Type, d.Content);
-
-        onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.DirectiveProcessing, PipelineStageStatus.Running));
-        var embeddingConfig = JsonSerializer.Deserialize<ModelConfig>(project.EmbeddingConfig) ?? new ModelConfig();
-        await ProcessDirectivesAsync(batch, sessionID, activeScene, embeddingConfig, cancellationToken);
-        onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.DirectiveProcessing, PipelineStageStatus.Complete));
-
-        activeScene = await sceneRepository.GetActiveSceneAsync(sessionID, cancellationToken);
-
-        if (activeScene is null)
-            throw new InvalidOperationException("场景创建失败: Scene Agent 未调用 create_scene 工具");
-
-        timelinePosition = activeScene.TimelinePosition;
-
-        var history = await BuildHistoryAsync(sessionID, roundID, cancellationToken);
-
-        Log.Information("历史叙事注入: {HistoryCount} 轮", history.Count);
-
-        var context = new PipelineContext
-        {
-            DirectiveBatch          = batch,
-            RoundID                 = roundID,
-            SessionID               = sessionID,
-            CurrentSceneID          = activeScene.ID,
-            CurrentTimelinePosition = timelinePosition,
-            Project                 = project,
-            EmbeddingConfig         = embeddingConfig,
-            History                 = history,
-            OnStreamingUpdate       = onStreamingUpdate,
-            OnStageUpdate           = onStageUpdate
-        };
-
-        onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.Retrieval, PipelineStageStatus.Running));
-        await retrievalStage.ExecuteAsync(context, cancellationToken);
-        onStageUpdate?.Invoke
-        (
-            new PipelineStageUpdate
+            Log.Information
             (
-                PipelineStageKind.Retrieval,
-                PipelineStageStatus.Complete,
-                $"知识长度={context.KnowledgeContext?.Length ?? 0}, 记忆长度={context.MemoryContext?.Length ?? 0}"
-            )
-        );
+                "Orchestrator 开始处理批次: 项目={ProjectID} ({ProjectName}), 对话={SessionID}, 轮次={RoundID}, 场景={SceneID}, 指令数={DirectiveCount}",
+                batch.ProjectID,
+                project.Name,
+                sessionID,
+                roundID,
+                activeScene?.ID,
+                batch.Directives.Count
+            );
 
-        onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.Generation, PipelineStageStatus.Running));
-        await generationStage.ExecuteAsync(context, cancellationToken);
-        onStageUpdate?.Invoke
-        (
-            new PipelineStageUpdate
-            (
-                PipelineStageKind.Generation,
-                PipelineStageStatus.Complete,
-                $"叙事长度={context.NarrativeOutput?.Length ?? 0}"
-            )
-        );
+            foreach (var d in batch.Directives)
+                Log.Information("  指令 #{Order} [{Type}] {Content}", d.Order, d.Type, d.Content);
 
-        await RecordEventAsync
-        (
-            batch.ProjectID,
-            sessionID,
-            roundID,
-            EventType.DirectorInput,
-            JsonSerializer.Serialize
+            onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.DirectiveProcessing, PipelineStageStatus.Running));
+            var embeddingConfig = JsonSerializer.Deserialize<ModelConfig>(project.EmbeddingConfig) ?? new ModelConfig();
+            await ProcessDirectivesAsync(batch, sessionID, activeScene, embeddingConfig, cancellationToken);
+            onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.DirectiveProcessing, PipelineStageStatus.Complete));
+
+            activeScene = await sceneRepository.GetActiveSceneAsync(sessionID, cancellationToken);
+
+            if (activeScene is null)
+                throw new InvalidOperationException("场景创建失败: Scene Agent 未调用 create_scene 工具");
+
+            timelinePosition = activeScene.TimelinePosition;
+
+            var history = await BuildHistoryAsync(sessionID, roundID, cancellationToken);
+
+            Log.Information("历史叙事注入: {HistoryCount} 轮", history.Count);
+
+            var context = new PipelineContext
+            {
+                DirectiveBatch          = batch,
+                RoundID                 = roundID,
+                SessionID               = sessionID,
+                CurrentSceneID          = activeScene.ID,
+                CurrentTimelinePosition = timelinePosition,
+                Project                 = project,
+                EmbeddingConfig         = embeddingConfig,
+                History                 = history,
+                OnStreamingUpdate       = onStreamingUpdate,
+                OnStageUpdate           = onStageUpdate
+            };
+
+            onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.Retrieval, PipelineStageStatus.Running));
+            await retrievalStage.ExecuteAsync(context, cancellationToken);
+            onStageUpdate?.Invoke
             (
-                batch.Directives.Select
-                (d => new
-                    {
-                        type    = d.Type.ToString(),
-                        content = d.Content,
-                        order   = d.Order
-                    }
+                new PipelineStageUpdate
+                (
+                    PipelineStageKind.Retrieval,
+                    PipelineStageStatus.Complete,
+                    $"知识长度={context.KnowledgeContext?.Length ?? 0}, 记忆长度={context.MemoryContext?.Length ?? 0}"
                 )
-            ),
-            cancellationToken
-        );
+            );
 
-        await RecordEventAsync
-        (
-            batch.ProjectID,
-            sessionID,
-            roundID,
-            EventType.NarrativeOutput,
-            context.NarrativeOutput ?? string.Empty,
-            cancellationToken
-        );
-
-        onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.Audit, PipelineStageStatus.Running));
-        await RunAuditLoopAsync(context, cancellationToken);
-        onStageUpdate?.Invoke
-        (
-            new PipelineStageUpdate
+            onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.Generation, PipelineStageStatus.Running));
+            await generationStage.ExecuteAsync(context, cancellationToken);
+            onStageUpdate?.Invoke
             (
-                PipelineStageKind.Audit,
-                PipelineStageStatus.Complete,
-                context.AuditPassed ?
-                    "通过" :
-                    $"违规数={context.Violations.Count}"
-            )
-        );
+                new PipelineStageUpdate
+                (
+                    PipelineStageKind.Generation,
+                    PipelineStageStatus.Complete,
+                    $"叙事长度={context.NarrativeOutput?.Length ?? 0}"
+                )
+            );
 
-        if (context.AuditPassed)
-        {
-            onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.PostProcessing, PipelineStageStatus.Running));
-            await postProcessingStage.ExecuteAsync(context, cancellationToken);
-            onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.PostProcessing, PipelineStageStatus.Complete));
-        }
+            await RecordEventAsync
+            (
+                batch.ProjectID,
+                sessionID,
+                roundID,
+                EventType.DirectorInput,
+                JsonSerializer.Serialize
+                (
+                    batch.Directives.Select
+                    (d => new
+                        {
+                            type    = d.Type.ToString(),
+                            content = d.Content,
+                            order   = d.Order
+                        }
+                    )
+                ),
+                cancellationToken
+            );
 
-        await directiveRepository.DecrementTTLAsync(sessionID, cancellationToken);
+            await RecordEventAsync
+            (
+                batch.ProjectID,
+                sessionID,
+                roundID,
+                EventType.NarrativeOutput,
+                context.NarrativeOutput ?? string.Empty,
+                cancellationToken
+            );
 
-        Log.Information
-        (
-            "Orchestrator 批次处理完成: 对话={SessionID}, 轮次={RoundID}, 审计通过={Passed}, 违规数={Violations}, 叙事长度={NarrativeLen}",
-            sessionID,
-            roundID,
-            context.AuditPassed,
-            context.Violations.Count,
-            context.NarrativeOutput?.Length ?? 0
-        );
+            onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.Audit, PipelineStageStatus.Running));
+            await RunAuditLoopAsync(context, cancellationToken);
+            onStageUpdate?.Invoke
+            (
+                new PipelineStageUpdate
+                (
+                    PipelineStageKind.Audit,
+                    PipelineStageStatus.Complete,
+                    context.AuditPassed ?
+                        "通过" :
+                        $"违规数={context.Violations.Count}"
+                )
+            );
 
-        return new NarrationResult
-        (
-            context.NarrativeOutput ?? string.Empty,
-            context.ThinkingOutput  ?? string.Empty,
-            roundID,
-            context.Violations,
-            context.AuditPassed
-        );
+            if (context.AuditPassed)
+            {
+                onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.PostProcessing, PipelineStageStatus.Running));
+                await postProcessingStage.ExecuteAsync(context, cancellationToken);
+                onStageUpdate?.Invoke(new PipelineStageUpdate(PipelineStageKind.PostProcessing, PipelineStageStatus.Complete));
+            }
+
+            await directiveRepository.DecrementTTLAsync(sessionID, cancellationToken);
+
+            Log.Information
+            (
+                "Orchestrator 批次处理完成: 对话={SessionID}, 轮次={RoundID}, 审计通过={Passed}, 违规数={Violations}, 叙事长度={NarrativeLen}",
+                sessionID,
+                roundID,
+                context.AuditPassed,
+                context.Violations.Count,
+                context.NarrativeOutput?.Length ?? 0
+            );
+
+            return new NarrationResult
+            (
+                context.NarrativeOutput ?? string.Empty,
+                context.ThinkingOutput  ?? string.Empty,
+                roundID,
+                context.Violations,
+                context.AuditPassed
+            );
         }
     }
 
@@ -364,33 +364,36 @@ public sealed class Orchestrator
 
         foreach (var directive in batch.Directives)
         {
-            if (directive.Type is DirectiveType.Tone or DirectiveType.TemporaryConstraint)
+            switch (directive.Type)
             {
-                Log.Information
-                (
-                    "添加生效指令: 类型={Type}, 内容={Content}, TTL={TTL}",
-                    directive.Type,
-                    directive.Content,
-                    directive.TTL?.ToString() ?? "永久"
-                );
+                case DirectiveType.Tone or DirectiveType.TemporaryConstraint:
+                    Log.Information
+                    (
+                        "添加生效指令: 类型={Type}, 内容={Content}, TTL={TTL}",
+                        directive.Type,
+                        directive.Content,
+                        directive.TTL?.ToString() ?? "永久"
+                    );
 
-                await directiveRepository.AddAsync
-                (
-                    new ActiveDirective
-                    {
-                        ProjectID = batch.ProjectID,
-                        SessionID = sessionID,
-                        Type      = directive.Type,
-                        Content   = directive.Content,
-                        TTL       = directive.TTL,
-                        CreatedAt = DateTime.UtcNow
-                    },
-                    cancellationToken
-                );
+                    await directiveRepository.AddAsync
+                    (
+                        new ActiveDirective
+                        {
+                            ProjectID = batch.ProjectID,
+                            SessionID = sessionID,
+                            Type      = directive.Type,
+                            Content   = directive.Content,
+                            TTL       = directive.TTL,
+                            CreatedAt = DateTime.UtcNow
+                        },
+                        cancellationToken
+                    );
+                    break;
+                case DirectiveType.SceneChange:
+                    await CreateSceneViaAgentAsync(batch.ProjectID, sessionID, directive.Content, activeScene, embeddingConfig, cancellationToken);
+                    break;
             }
 
-            if (directive.Type == DirectiveType.SceneChange)
-                await CreateSceneViaAgentAsync(batch.ProjectID, sessionID, directive.Content, activeScene, embeddingConfig, cancellationToken);
         }
     }
 
@@ -406,9 +409,9 @@ public sealed class Orchestrator
     {
         var sceneAgent = config.Agents.FirstOrDefault(a => a.Role == AgentRole.Scene);
 
-        if (sceneAgent is null || !sceneAgent.Enabled)
+        if (sceneAgent is null)
         {
-            Log.Debug("Scene Agent 未启用, 跳过场景创建");
+            Log.Debug("Scene Agent 为空, 跳过场景创建");
             return;
         }
 
@@ -458,7 +461,9 @@ public sealed class Orchestrator
                 "Scene Agent 返回 (尝试 {Attempt}/{MaxRetries}): {Text}",
                 attempt,
                 maxSceneRetries,
-                responseText.Length > 200 ? responseText[..200] + "..." : responseText
+                responseText.Length > 200 ?
+                    responseText[..200] + "..." :
+                    responseText
             );
 
             var sceneAfterAgent = await sceneRepository.GetActiveSceneAsync(sessionID, cancellationToken);
@@ -478,15 +483,16 @@ public sealed class Orchestrator
 
             if (attempt < maxSceneRetries)
             {
-                messages = new List<ChatMessage>
-                {
+                messages =
+                [
                     new
                     (
                         ChatRole.System,
                         SceneAgentPrompt.System + "\n\n注意: 你之前没有调用 create_scene 工具, 这是强制要求。请立即调用 create_scene 工具创建场景, 不要只回复文本。"
                     ),
+
                     new(ChatRole.User, description)
-                };
+                ];
             }
         }
     }

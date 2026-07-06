@@ -7,7 +7,14 @@ namespace DirectorPrompt.Infrastructure.AI;
 
 public sealed class ModelConnectionTester : IModelConnectionTester
 {
-    public async Task TestChatAsync(string provider, string endpoint, string? apiKey, string modelName, CancellationToken cancellationToken = default)
+    public async Task TestChatAsync
+    (
+        string            provider,
+        string            endpoint,
+        string?           apiKey,
+        string            modelName,
+        CancellationToken cancellationToken = default
+    )
     {
         if (string.IsNullOrWhiteSpace(modelName))
             throw new ArgumentException("模型名不能为空");
@@ -17,7 +24,7 @@ public sealed class ModelConnectionTester : IModelConnectionTester
 
         var messages = new List<ChatMessage>
         {
-            new(ChatRole.User, "ping")
+            new(ChatRole.User, "连接测试，回复任一字符即可")
         };
 
         var response = await chatClient.GetResponseAsync(messages, cancellationToken: cancellationToken);
@@ -26,7 +33,14 @@ public sealed class ModelConnectionTester : IModelConnectionTester
             throw new InvalidOperationException("模型返回了空响应");
     }
 
-    public async Task TestEmbeddingAsync(string provider, string endpoint, string? apiKey, string modelName, CancellationToken cancellationToken = default)
+    public async Task TestEmbeddingAsync
+    (
+        string            provider,
+        string            endpoint,
+        string?           apiKey,
+        string            modelName,
+        CancellationToken cancellationToken = default
+    )
     {
         if (string.IsNullOrWhiteSpace(modelName))
             throw new ArgumentException("模型名不能为空");

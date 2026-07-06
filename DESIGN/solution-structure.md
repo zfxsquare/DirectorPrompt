@@ -29,7 +29,7 @@ DirectorPrompt/
 - 事件模型: `PlaythroughEvent`、`EventType`
 - 条件表达式引擎: 条件解析和求值 (纯逻辑, 不依赖外部)
 - 时间线坐标计算: `timelinePosition` 的中点法、步长计算 (纯数学)
-- 仓储接口: `ISceneRepository`、`IStateRepository`、`IKnowledgeRepository`、`IMemoryRepository`、`ICharacterRepository`、`IEventRepository`、`IStateSnapshotRepository`
+- 仓储接口: `ISceneRepository`、`IStateRepository`、`IKnowledgeRepository`、`IMemoryRepository`、`ICharacterRepository`、`IEventRepository`
 - 服务接口: `IConditionEngine`、`ITimelineCalculator`、`IEmbeddingService`
 
 **不包含:** AI 相关、数据库相关、UI 相关

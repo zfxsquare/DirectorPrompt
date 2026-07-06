@@ -19,17 +19,11 @@ public partial class SettingsWindow : FluentWindow
 
     private void OnNavSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (DatabasePanel is null)
-            return;
-
         if (NavList.SelectedItem is not ListViewItem item)
             return;
 
         var tag = item.Tag as string;
 
-        DatabasePanel.Visibility = tag == "database" ?
-                                       Visibility.Visible :
-                                       Visibility.Collapsed;
         AgentsPanel.Visibility = tag == "agents" ?
                                      Visibility.Visible :
                                      Visibility.Collapsed;

@@ -31,9 +31,6 @@ public sealed partial class SettingsViewModel : ObservableObject
     private string validationMessage = string.Empty;
 
     [ObservableProperty]
-    private int snapshotInterval;
-
-    [ObservableProperty]
     private string selectedLanguage = string.Empty;
 
     public ObservableCollection<AgentSettingViewModel> Agents { get; } = [];
@@ -56,7 +53,6 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     private void LoadSettings(UserSettings userSettings)
     {
-        SnapshotInterval = userSettings.Orchestrator.SnapshotInterval;
         SelectedLanguage = userSettings.Localization.Language;
 
         if (string.IsNullOrEmpty(SelectedLanguage))
@@ -153,8 +149,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         {
             Orchestrator = new UserOrchestratorConfig
             {
-                Agents           = agents,
-                SnapshotInterval = SnapshotInterval
+                Agents           = agents
             },
             Localization = new LocalizationConfig { Language = SelectedLanguage }
         };

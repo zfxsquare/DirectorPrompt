@@ -120,9 +120,8 @@ public partial class App : Application
         services.AddSingleton<IKnowledgeRepository, KnowledgeRepository>();
         services.AddSingleton<IMemoryRepository, MemoryRepository>();
         services.AddSingleton<ICharacterRepository, CharacterRepository>();
-        services.AddSingleton<IEventRepository, EventRepository>();
-        services.AddSingleton<IStateSnapshotRepository, StateSnapshotRepository>();
-        services.AddSingleton<IDirectiveRepository, DirectiveRepository>();
+            services.AddSingleton<IEventRepository, EventRepository>();
+            services.AddSingleton<IDirectiveRepository, DirectiveRepository>();
 
         services.AddSingleton<ITimelineCalculator, TimelineCalculator>();
         services.AddSingleton<IConditionEngine, ConditionEngine>();

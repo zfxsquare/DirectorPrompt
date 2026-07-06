@@ -21,7 +21,7 @@ Scene {
 
 | 系统 | 挂载方式 |
 |------|---------|
-| 状态系统 | 场景结束时的状态快照, 引用 sceneId |
+| 状态系统 | 状态变更日志引用 sceneId |
 | 知识系统 | 知识条目的 validFrom / validTo 指向 timelinePosition |
 | 记忆系统 | 场景摘要本身是一个记忆条目, 引用 sceneId |
 | 人物系统 | 人物出场标记, 引用 sceneId |

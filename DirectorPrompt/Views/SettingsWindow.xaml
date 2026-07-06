@@ -54,13 +54,6 @@
                       Padding="4"
                       SelectionChanged="OnNavSelectionChanged"
                       SelectedIndex="0">
-                <ListViewItem Tag="database" Padding="12,10">
-                    <StackPanel Orientation="Horizontal">
-                        <ui:SymbolIcon Symbol="Database24" Margin="0,0,12,0" />
-                        <TextBlock Text="{Binding [Settings.Database.Title], Source={x:Static loc:Loc.Instance}}"
-                                   VerticalAlignment="Center" />
-                    </StackPanel>
-                </ListViewItem>
                 <ListViewItem Tag="agents" Padding="12,10">
                     <StackPanel Orientation="Horizontal">
                         <ui:SymbolIcon Symbol="Bot24" Margin="0,0,12,0" />
@@ -83,27 +76,7 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               Padding="24,12,24,16">
                     <Grid>
-                        <StackPanel x:Name="DatabasePanel" Visibility="Visible">
-                            <TextBlock Text="{Binding [Settings.Database.Title], Source={x:Static loc:Loc.Instance}}"
-                                       FontSize="20"
-                                       FontWeight="SemiBold"
-                                       Margin="0,0,0,16" />
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="120" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0"
-                                           Text="{Binding [Settings.Database.SnapshotInterval], Source={x:Static loc:Loc.Instance}}"
-                                           VerticalAlignment="Center" />
-                                <ui:NumberBox Grid.Column="1"
-                                              Value="{Binding SnapshotInterval, UpdateSourceTrigger=PropertyChanged}"
-                                              Minimum="0"
-                                              Maximum="1000" />
-                            </Grid>
-                        </StackPanel>
-
-                        <StackPanel x:Name="AgentsPanel" Visibility="Collapsed">
+                        <StackPanel x:Name="AgentsPanel" Visibility="Visible">
                             <TextBlock Text="{Binding [Settings.Agent.Title], Source={x:Static loc:Loc.Instance}}"
                                        FontSize="20"
                                        FontWeight="SemiBold"

@@ -170,19 +170,6 @@ StateChangeLog {
 
 用户可回溯"为什么金钱突然少了"。Audit Agent 也用这个做一致性校验。
 
-## 状态快照
-
-每个场景结束时记录快照, 供回滚使用:
-
-```
-StateSnapshot {
-    sceneId: long
-    attributes: json      // { "money": 500, "weather": "雨", ... }
-}
-```
-
-回滚到某场景时恢复该场景起点的快照。
-
 ## 工具定义
 
 ### 查询
@@ -220,7 +207,7 @@ remove_item(attribute: string, itemId: long, reason: string)
 
 | 系统 | 交互方式 |
 |------|---------|
-| 时间线 | 状态快照按 sceneId 存储, 回滚时恢复对应场景的快照 |
+| 时间线 | 状态变更按 sceneId 关联, 回滚时移除事件 |
 | 知识系统 | Effect 的 inject_knowledge 向叙事注入知识 |
 | 记忆系统 | 状态变更原因记录在 changeLog, Memory Sub-Agent 压缩时可参考 |
 | 人物系统 | 复用 StateAttribute 模型, scope=category; 人物状态跟随分类继承解析 |

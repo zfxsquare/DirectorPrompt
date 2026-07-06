@@ -121,28 +121,10 @@ PlaythroughEvent {
 
 ```
 重建状态到 round N:
-    1. 查找 roundId < N 的最新快照
-    2. 从快照之后的事件开始重放
-    3. 依次应用 state_change / memory_update / character_update / scene_change / directive_change 事件
-    4. 得到 round N 结束时的完整状态
+    1. 从事件序列开头开始重放
+    2. 依次应用 state_change / memory_update / character_update / scene_change / directive_change 事件
+    3. 得到 round N 结束时的完整状态
 ```
-
-### 快照
-
-为性能考虑, 在场景边界自动拍摄快照:
-
-```
-StateSnapshot {
-    roundId: long          // 快照拍摄时的 roundId
-    globalState: json      // 全局状态值
-    characterState: json   // 人物状态值
-    activeDirectives: json // 生效指令
-    currentSceneId: long   // 当前场景
-    sceneCharacters: json  // 当前在场人物
-}
-```
-
-重建状态时从最近的快照开始, 而非从零重放全部事件。
 
 ## 完整流水线
 
@@ -170,7 +152,7 @@ Orchestrator 接收并处理批次 (本地代码)
 │  └────────┬───────────┘                        │
 │           │                                     │
 │  ┌─ 系统确定性注入 ────┐                        │
-│  │  当前全局状态快照     │                        │
+│  │  当前全局状态         │                        │
 │  │  在场人物+关系网络    │                        │
 │  │  场景时间信息         │                        │
 │  │  Active Directives   │                        │
@@ -400,6 +382,5 @@ OrchestratorConfig {
     auditConfig: AuditConfig       // 审计配置 (见审计系统文档)
     memoryConfig: MemoryConfig     // 记忆配置 (见记忆系统文档)
     knowledgeConfig: KnowledgeRetrievalConfig  // 知识检索配置 (见知识系统文档)
-    snapshotInterval: int          // 快照间隔 (每隔多少轮自动快照), 默认按场景边界
 }
 ```

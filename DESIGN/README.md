@@ -47,7 +47,7 @@ DirectorPrompt 从零开始设计这些能力。
 
 ### 状态系统
 
-全局世界状态, 驱动叙事走向。支持三种数据形态 (numeric / enum / composite) 和两种驱动方式 (narrative / system)。包含阶段效果、标记、变更审计、状态快照。状态系统同时服务于全局状态和人物状态, 通过分类继承解析。
+全局世界状态, 驱动叙事走向。支持三种数据形态 (numeric / enum / composite) 和两种驱动方式 (narrative / system)。包含阶段效果、标记、变更审计。状态系统同时服务于全局状态和人物状态, 通过分类继承解析。
 
 ### 知识系统
 
@@ -67,7 +67,7 @@ DirectorPrompt 从零开始设计这些能力。
 
 ### 事件序列
 
-一次游玩过程是一次可重放的事件序列。所有系统状态可从事件序列重建。回滚 = 移除事件。场景边界自动拍摄快照加速重建。
+一次游玩过程是一次可重放的事件序列。所有系统状态可从事件序列重建。回滚 = 移除事件。
 
 ### 工具与 MCP
 
@@ -98,7 +98,7 @@ DirectorPrompt 从零开始设计这些能力。
 | [tech-stack.md](tech-stack.md) | 技术栈选型与设计原则 |
 | [core-interaction-paradigm.md](core-interaction-paradigm.md) | 导演模式、指令类型、回合模型 |
 | [timeline-system.md](timeline-system.md) | 场景、坐标轴、时间线排序 |
-| [state-system.md](state-system.md) | 状态属性、驱动方式、效果、标记、快照 |
+| [state-system.md](state-system.md) | 状态属性、驱动方式、效果、标记 |
 | [knowledge-system.md](knowledge-system.md) | 不可变知识、分组、三路混合检索 |
 | [memory-system.md](memory-system.md) | 三层记忆、改写更新、Sub-Agent 模式、权重衰减 |
 | [character-system.md](character-system.md) | 分类继承、状态栏复用、关系网络、记忆结合 |

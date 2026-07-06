@@ -21,7 +21,6 @@ public sealed class Orchestrator
     private readonly ICharacterRepository     characterRepository;
     private readonly IDirectiveRepository     directiveRepository;
     private readonly IEventRepository         eventRepository;
-    private readonly IStateSnapshotRepository snapshotRepository;
     private readonly IProjectRepository       projectRepository;
     private readonly ISessionRepository       sessionRepository;
     private readonly IKnowledgeRepository     knowledgeRepository;
@@ -50,7 +49,6 @@ public sealed class Orchestrator
         ICharacterRepository     characterRepository,
         IDirectiveRepository     directiveRepository,
         IEventRepository         eventRepository,
-        IStateSnapshotRepository snapshotRepository,
         IProjectRepository       projectRepository,
         ISessionRepository       sessionRepository,
         IKnowledgeRepository     knowledgeRepository,
@@ -66,7 +64,6 @@ public sealed class Orchestrator
         this.characterRepository = characterRepository;
         this.directiveRepository = directiveRepository;
         this.eventRepository     = eventRepository;
-        this.snapshotRepository  = snapshotRepository;
         this.projectRepository   = projectRepository;
         this.sessionRepository   = sessionRepository;
         this.knowledgeRepository = knowledgeRepository;

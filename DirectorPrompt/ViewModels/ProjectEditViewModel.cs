@@ -199,7 +199,7 @@ this.characterRepository = characterRepository;
             GroupDisplay = groupName
         };
 
-    private static void ParseStateConfig(StateAttributeEditViewModel vm, string json)
+    private void ParseStateConfig(StateAttributeEditViewModel vm, string json)
     {
         if (string.IsNullOrWhiteSpace(json) || json == "{}")
             return;
@@ -244,6 +244,33 @@ this.characterRepository = characterRepository;
             {
                 if (Enum.TryParse<SystemTrigger>(regen.GetString(), out var rt))
                     vm.RegenerateTrigger = rt;
+            }
+
+            if (doc.RootElement.TryGetProperty("phases", out var phasesEl) && phasesEl.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var ph in phasesEl.EnumerateArray())
+                {
+                    var phaseVM = new PhaseEditViewModel();
+                    phaseVM.PopulateAvailableKnowledge(KnowledgeGroups);
+
+                    var phName = ph.TryGetProperty("name", out var pn) && pn.ValueKind != JsonValueKind.Null
+                                     ? pn.GetString() ?? string.Empty
+                                     : string.Empty;
+
+                    var phExpr = ph.TryGetProperty("expression", out var pe) && pe.ValueKind != JsonValueKind.Null
+                                     ? pe.GetString() ?? string.Empty
+                                     : string.Empty;
+
+                    var kIds = ph.TryGetProperty("knowledgeIds", out var kid) && kid.ValueKind == JsonValueKind.Array
+                                   ? kid.EnumerateArray().Select(v => v.GetInt64()).ToArray()
+                                   : [];
+                    var gIds = ph.TryGetProperty("knowledgeGroupIds", out var gid) && gid.ValueKind == JsonValueKind.Array
+                                   ? gid.EnumerateArray().Select(v => v.GetInt64()).ToArray()
+                                   : [];
+
+                    phaseVM.SyncFromConfig(phName, phExpr, kIds, gIds);
+                    vm.Phases.Add(phaseVM);
+                }
             }
         }
         catch
@@ -316,14 +343,17 @@ var values     = await stateRepository.GetAllStateValuesAsync(projectID, 0);
             };
 
             ParseStateConfig(attrVM, attr.Config);
-            StateAttributes.Add(attrVM);
+
 
             if (attr.Scope == StateScope.Category && attr.CategoryID is not null)
             {
                 var catVM = CharacterCategories.FirstOrDefault(c => c.ID == attr.CategoryID.Value);
 
-                if (catVM is not null)
-                    catVM.StateAttributes.Add(attrVM);
+                catVM?.StateAttributes.Add(attrVM);
+            }
+            else
+            {
+                StateAttributes.Add(attrVM);
             }
         }
 
@@ -665,6 +695,7 @@ var values     = await stateRepository.GetAllStateValuesAsync(projectID, 0);
         if (attribute.ID <= 0)
         {
             StateAttributes.Remove(attribute);
+            RemoveAttributeFromCategory(attribute);
             return;
         }
 
@@ -672,12 +703,23 @@ var values     = await stateRepository.GetAllStateValuesAsync(projectID, 0);
         {
             await stateRepository.DeleteAttributeAsync(attribute.ID);
             StateAttributes.Remove(attribute);
+            RemoveAttributeFromCategory(attribute);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "删除状态属性失败");
             ValidationMessage = Loc.Get("Common.DeleteFailed", ex.Message);
         }
+    }
+
+    private void RemoveAttributeFromCategory(StateAttributeEditViewModel attribute)
+    {
+        if (attribute.Scope != StateScope.Category || attribute.CategoryID is null)
+            return;
+
+        var catVM = CharacterCategories.FirstOrDefault(c => c.ID == attribute.CategoryID.Value);
+
+        catVM?.StateAttributes.Remove(attribute);
     }
 
     [RelayCommand]
@@ -787,8 +829,52 @@ var values     = await stateRepository.GetAllStateValuesAsync(projectID, 0);
             IsEditing   = true
         };
 
-        StateAttributes.Add(attrVM);
         category.StateAttributes.Add(attrVM);
+    }
+
+    [RelayCommand]
+    private void AddPhase(StateAttributeEditViewModel? attribute)
+    {
+        if (attribute is null)
+            return;
+
+        var phase = new PhaseEditViewModel { IsEditing = true };
+        phase.PopulateAvailableKnowledge(KnowledgeGroups);
+        attribute.Phases.Add(phase);
+    }
+
+    [RelayCommand]
+    private void DeletePhase(PhaseEditViewModel? phase)
+    {
+        if (phase is null)
+            return;
+
+        foreach (var attr in StateAttributes)
+        {
+            if (attr.Phases.Remove(phase))
+                return;
+        }
+
+        foreach (var cat in CharacterCategories)
+        {
+            foreach (var attr in cat.StateAttributes)
+            {
+                if (attr.Phases.Remove(phase))
+                    return;
+            }
+        }
+    }
+
+    [RelayCommand]
+    private void AddPhaseKnowledge((PhaseEditViewModel phase, KnowledgeSelectionItem item) args)
+    {
+        args.phase.AddLinkedItem(args.item);
+    }
+
+    [RelayCommand]
+    private void RemovePhaseKnowledge((PhaseEditViewModel phase, KnowledgeSelectionItem item) args)
+    {
+        args.phase.RemoveLinkedItem(args.item);
     }
 
     [RelayCommand]

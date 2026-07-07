@@ -873,7 +873,7 @@ public sealed partial class MainViewModel
         var values     = await stateRepository.GetAllStateValuesAsync(CurrentProject.ID, CurrentSession.ID);
         var attributes = await stateRepository.GetAttributesAsync(CurrentProject.ID);
 
-        foreach (var attr in attributes)
+        foreach (var attr in attributes.Where(a => a.Scope == StateScope.Global))
         {
             var value = values.FirstOrDefault(v => v.AttributeID == attr.ID);
 

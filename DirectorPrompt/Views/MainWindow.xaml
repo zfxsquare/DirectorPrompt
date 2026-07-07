@@ -697,8 +697,7 @@ Click="OnRollbackRound"
                                                        TextWrapping="Wrap"
                                                        FontSize="11"
                                                        Foreground="{DynamicResource AccentFillColorDefaultBrush}"
-                                                       Margin="0,2,0,0"
-                                                       Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}" />
+                                                       Margin="0,2,0,0" />
 
                                             <StackPanel Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}"
                                                         Margin="0,4,0,0">

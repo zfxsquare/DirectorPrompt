@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using DirectorPrompt.Domain.Enums;
@@ -62,11 +63,22 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
     [ObservableProperty]
     public partial SystemTrigger RegenerateTrigger { get; set; } = SystemTrigger.SceneChange;
 
+    public ObservableCollection<PhaseEditViewModel> Phases { get; } = [];
+
     public bool IsNumericConfig => ValueType == StateValueType.Numeric;
 
     public bool IsEnumConfig => ValueType == StateValueType.Enum;
 
     public bool IsCompositeConfig => ValueType == StateValueType.Composite;
+
+    private object BuildPhasesPayload() =>
+        Phases.Select(p => new
+        {
+            name              = p.Name,
+            expression        = p.Expression,
+            knowledgeIds      = p.GetKnowledgeIDs(),
+            knowledgeGroupIds = p.GetKnowledgeGroupIDs()
+        });
 
     public string BuildConfig() =>
         (ValueType, Driver) switch
@@ -78,7 +90,8 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
                     min         = MinValue,
                     max         = MaxValue,
                     unit        = Unit,
-                    changeRules = ChangeRules
+                    changeRules = ChangeRules,
+                    phases      = BuildPhasesPayload()
                 }
             ),
             (StateValueType.Enum, Driver.System) => JsonSerializer.Serialize
@@ -88,7 +101,8 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
                     options         = Options.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
                     trigger         = Trigger.ToString(),
                     transitionRules = new { },
-                    effects         = new { }
+                    effects         = new { },
+                    phases          = BuildPhasesPayload()
                 }
             ),
             (StateValueType.Composite, Driver.System) => JsonSerializer.Serialize
@@ -99,9 +113,10 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
                     regenerateTrigger   = RegenerateTrigger.ToString(),
                     regenerateCondition = (string?)null,
                     itemCompleteEffect  = new { },
-                    itemFailEffect      = new { }
+                    itemFailEffect      = new { },
+                    phases              = BuildPhasesPayload()
                 }
             ),
-            _ => "{}"
+            _ => JsonSerializer.Serialize(new { phases = BuildPhasesPayload() })
         };
 }

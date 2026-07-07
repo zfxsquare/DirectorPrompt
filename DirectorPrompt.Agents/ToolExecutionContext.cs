@@ -4,10 +4,11 @@ namespace DirectorPrompt.Agents;
 
 public record ToolExecutionContext
 (
-    long        ProjectID,
-    long        SessionID,
-    long?       SceneID,
-    long        TimelinePosition,
-    long        RoundID,
-    ModelConfig EmbeddingConfig
+    long                 ProjectID,
+    long                 SessionID,
+    long?                SceneID,
+    long                 TimelinePosition,
+    long                 RoundID,
+    ModelConfig          EmbeddingConfig,
+    IReadOnlyList<long>? PhaseActivatedEntryIDs = null
 );

@@ -74,6 +74,27 @@ public sealed class KnowledgeRepository : IKnowledgeRepository
         return rows.Select(r => r.ToKnowledgeEntry()).ToList();
     }
 
+    public async Task<IReadOnlyList<KnowledgeEntry>> GetEntriesByIdsAsync
+    (
+        long                projectID,
+        IReadOnlyList<long> entryIDs,
+        CancellationToken   cancellationToken = default
+    )
+    {
+        if (entryIDs.Count == 0)
+            return [];
+
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        var rows = await connection.QueryAsync<KnowledgeEntryRow>
+                   (
+                       "SELECT * FROM knowledge_entries WHERE project_id = @projectID AND id IN @entryIDs ORDER BY id",
+                       new { projectID, entryIDs }
+                   );
+
+        return rows.Select(r => r.ToKnowledgeEntry()).ToList();
+    }
+
     public async Task<KnowledgeEntry> CreateAsync(KnowledgeEntry entry, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);

@@ -51,10 +51,13 @@ public sealed class PipelineContext
         CurrentSceneID,
         CurrentTimelinePosition,
         RoundID,
-        EmbeddingConfig
+        EmbeddingConfig,
+        PhaseActivatedEntryIDs
     );
 
     public required ModelConfig EmbeddingConfig { get; init; }
+
+    public IReadOnlyList<long>? PhaseActivatedEntryIDs { get; set; }
 }
 
 public record ChatHistoryEntry

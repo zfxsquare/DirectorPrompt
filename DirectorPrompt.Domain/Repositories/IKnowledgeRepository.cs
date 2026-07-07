@@ -12,6 +12,8 @@ public interface IKnowledgeRepository
 
     Task<IReadOnlyList<KnowledgeEntry>> GetByGroupAsync(long groupID, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<KnowledgeEntry>> GetEntriesByIdsAsync(long projectID, IReadOnlyList<long> entryIDs, CancellationToken cancellationToken = default);
+
     Task<KnowledgeEntry> CreateAsync(KnowledgeEntry entry, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(KnowledgeEntry entry, CancellationToken cancellationToken = default);

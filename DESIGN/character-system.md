@@ -95,7 +95,7 @@ CharacterResolvedCategories {
 人物状态的 driver 行为与全局状态完全一致:
 
 - narrative 驱动: Memory Sub-Agent 从叙事中提取变更, 调用 tool 落地
-- system 驱动: 系统按配置规则自动变换, 通过 Phase 驱动知识注入
+- system 驱动: 系统按配置规则自动变换, 通过 Phase 将关联知识变为可检索
 
 权限矩阵也一致 — narrative 驱动 AI 可改, system 驱动 AI 不可直接改。
 

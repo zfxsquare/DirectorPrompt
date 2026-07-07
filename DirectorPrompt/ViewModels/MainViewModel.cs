@@ -175,13 +175,35 @@ public sealed partial class MainViewModel
     }
 
     [RelayCommand]
-    private void NewProject()
+    private async Task NewProjectAsync()
     {
-        var window = serviceProvider.GetRequiredService<ProjectEditWindow>();
-        window.Owner = GetCurrentWindow();
+        var name = PromptDialog.Input
+        (
+            GetCurrentWindow(),
+            Loc.Get("Project.NewTitle"),
+            Loc.Get("Dialog.NewProjectPrompt"),
+            string.Empty
+        );
 
-        if (window.ShowDialog() == true)
-            _ = LoadProjectsAsync();
+        if (string.IsNullOrWhiteSpace(name))
+            return;
+
+        try
+        {
+            var project = new Project { Name = name.Trim() };
+
+            var created = await projectRepository.CreateAsync(project);
+
+            Log.Information("创建项目: ID={ProjectID}, 名称={Name}", created.ID, created.Name);
+
+            await LoadProjectsAsync();
+            CurrentProject = Projects.FirstOrDefault(p => p.ID == created.ID);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "创建项目失败");
+            StatusMessage = Loc.Get("Status.CreateProjectFailed", ex.Message);
+        }
     }
 
     [RelayCommand]

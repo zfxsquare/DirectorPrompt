@@ -32,6 +32,7 @@
     "Dialog.ThinkingProcess": "思考过程",
     "Dialog.AddDirective": "添加",
     "Dialog.SendDirective": "发送",
+    "Dialog.NewProjectPrompt": "输入项目名称",
     "Dialog.RenameSessionTitle": "重命名对话",
     "Dialog.RenameSessionPrompt": "输入新的对话名称",
     "Dialog.ConfirmDeleteProject": "确定删除项目 \"{0}\" 吗？此操作不可撤销",

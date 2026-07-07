@@ -10,7 +10,7 @@
                  xmlns:loc="clr-namespace:DirectorPrompt.Localization"
                  mc:Ignorable="d"
                  d:DataContext="{d:DesignInstance Type=vm:ProjectEditViewModel}"
-                 Title="{Binding [Project.NewTitle], Source={x:Static loc:Loc.Instance}}"
+                 Title="{Binding [Project.EditTitle], Source={x:Static loc:Loc.Instance}}"
                  Width="1000"
                  Height="720"
                  MinWidth="800"

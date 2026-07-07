@@ -23,8 +23,6 @@ public sealed partial class ProjectEditViewModel : ObservableObject
     private long projectID;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsEditing))]
-    [NotifyPropertyChangedFor(nameof(TitleText))]
     public partial string Name { get; set; } = string.Empty;
 
     [ObservableProperty]
@@ -56,9 +54,7 @@ public sealed partial class ProjectEditViewModel : ObservableObject
 
     public bool IsEditing => projectID > 0;
 
-    public string TitleText => IsEditing ?
-                                   Loc.Get("Project.EditTitle") :
-                                   Loc.Get("Project.NewTitle");
+    public string TitleText => Loc.Get("Project.EditTitle");
 
     public bool HasValidationMessage => !string.IsNullOrEmpty(ValidationMessage);
 
@@ -393,22 +389,9 @@ var values     = await stateRepository.GetAllStateValuesAsync(projectID, 0);
                 KnowledgeConfig = BuildKnowledgeConfig()
             };
 
-            if (projectID > 0)
-            {
-                await projectRepository.UpdateAsync(project);
-                SavedProjectID = projectID;
-                SaveSuccess    = true;
-            }
-            else
-            {
-                var created = await projectRepository.CreateAsync(project);
-                SavedProjectID = created.ID;
-                projectID      = created.ID;
-                SaveSuccess    = true;
-
-                OnPropertyChanged(nameof(IsEditing));
-                OnPropertyChanged(nameof(TitleText));
-            }
+            await projectRepository.UpdateAsync(project);
+            SavedProjectID = projectID;
+            SaveSuccess    = true;
 
             foreach (var group in KnowledgeGroups)
             {

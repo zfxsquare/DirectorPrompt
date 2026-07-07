@@ -5,7 +5,6 @@ using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
-using DirectorPrompt.Domain.Services;
 using Microsoft.Extensions.AI;
 using Serilog;
 
@@ -20,7 +19,6 @@ public sealed class RetrievalStage
     IDirectiveRepository    directiveRepository,
     IKnowledgeRepository    knowledgeRepository,
     IMemoryRepository       memoryRepository,
-    ISystemStateTransformer systemStateTransformer,
     KnowledgeTools          knowledgeTools,
     MemoryTools             memoryTools,
     OrchestratorConfig      orchestratorConfig
@@ -230,23 +228,6 @@ public sealed class RetrievalStage
                 await InjectCharacterStateAsync(sb, context, sceneCharacters, cancellationToken);
                 await InjectCharacterRelationsAsync(sb, context, sceneCharacters, cancellationToken);
             }
-        }
-
-        var injectedIDs = systemStateTransformer.ConsumeInjectedKnowledge(context.SessionID);
-
-        if (injectedIDs.Count > 0)
-        {
-            sb.AppendLine("## 注入知识");
-
-            foreach (var kid in injectedIDs)
-            {
-                var entry = await knowledgeRepository.GetByIDAsync(kid, cancellationToken);
-
-                if (entry is not null)
-                    sb.AppendLine($"- [{entry.Title}] {entry.Content}");
-            }
-
-            sb.AppendLine();
         }
 
         return sb.ToString();

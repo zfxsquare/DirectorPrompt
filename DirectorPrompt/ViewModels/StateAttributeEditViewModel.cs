@@ -101,7 +101,6 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
                     options         = Options.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
                     trigger         = Trigger.ToString(),
                     transitionRules = new { },
-                    effects         = new { },
                     phases          = BuildPhasesPayload()
                 }
             ),
@@ -112,8 +111,6 @@ public sealed partial class StateAttributeEditViewModel : ObservableObject
                     generationGuide     = GenerationGuide,
                     regenerateTrigger   = RegenerateTrigger.ToString(),
                     regenerateCondition = (string?)null,
-                    itemCompleteEffect  = new { },
-                    itemFailEffect      = new { },
                     phases              = BuildPhasesPayload()
                 }
             ),

@@ -25,7 +25,6 @@ DirectorPrompt/
 - 实体模型: `Scene`、`Round`、`StateAttribute`、`CompositeItem`、`KnowledgeEntry`、`KnowledgeGroup`、`MemoryEntry`、`Character`、`CharacterCategory`、`CharacterRelation`、`PlaythroughEvent`
 - 值对象和枚举: `ValueType`、`Driver`、`SceneStatus`、`CharacterStatus`、`DirectiveType`、`AuditSeverity` 等
 - 配置模型: `AuditConfig`、`MemoryConfig`、`KnowledgeRetrievalConfig`、`OrchestratorConfig`
-- Effect 模型: `Effect`、`EffectType`
 - 事件模型: `PlaythroughEvent`、`EventType`
 - 条件表达式引擎: 条件解析和求值 (纯逻辑, 不依赖外部)
 - 时间线坐标计算: `timelinePosition` 的中点法、步长计算 (纯数学)

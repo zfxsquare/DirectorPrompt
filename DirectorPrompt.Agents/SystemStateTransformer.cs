@@ -1,5 +1,3 @@
-using System.Collections.Concurrent;
-using System.Globalization;
 using System.Text.Json;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
@@ -13,12 +11,9 @@ public sealed class SystemStateTransformer
 (
     IStateRepository     stateRepository,
     ICharacterRepository characterRepository,
-    IDirectiveRepository directiveRepository,
     IConditionEngine     conditionEngine
 ) : ISystemStateTransformer
 {
-    private readonly ConcurrentDictionary<long, ConcurrentBag<long>> injectedKnowledge = new();
-
     public async Task ExecuteAsync
     (
         long              projectID,
@@ -52,7 +47,7 @@ public sealed class SystemStateTransformer
         foreach (var attr in systemAttrs)
         {
             if (attr.Scope == StateScope.Global)
-                await TransformGlobalAttributeAsync(attr, projectID, sessionID, sceneID, roundID, trigger, globalStateValues, attributes, cancellationToken);
+                await TransformGlobalAttributeAsync(attr, sessionID, sceneID, roundID, trigger, globalStateValues, cancellationToken);
         }
 
         if (sceneID is not null)
@@ -62,31 +57,21 @@ public sealed class SystemStateTransformer
             foreach (var attr in systemAttrs)
             {
                 if (attr.Scope == StateScope.Category)
-                    await TransformCategoryAttributeAsync(attr, projectID, sceneCharacters, sessionID, sceneID.Value, roundID, trigger, attrNameCache, globalStateValues, attributes, cancellationToken);
+                    await TransformCategoryAttributeAsync(attr, sceneCharacters, sessionID, sceneID.Value, roundID, trigger, attrNameCache, globalStateValues, cancellationToken);
             }
         }
 
         Log.Information("系统状态变换完成");
     }
 
-    public IReadOnlyList<long> ConsumeInjectedKnowledge(long sessionID)
-    {
-        if (injectedKnowledge.TryRemove(sessionID, out var bag))
-            return bag.ToArray();
-
-        return [];
-    }
-
     private async Task TransformGlobalAttributeAsync
     (
         StateAttribute             attr,
-        long                       projectID,
         long                       sessionID,
         long?                      sceneID,
         long                       roundID,
         SystemTrigger              trigger,
         Dictionary<string, string> globalStateValues,
-        IReadOnlyList<StateAttribute> allAttributes,
         CancellationToken          cancellationToken
     )
     {
@@ -98,7 +83,6 @@ public sealed class SystemStateTransformer
             await TransformEnumAttributeAsync
             (
                 attr,
-                projectID,
                 sessionID,
                 sceneID,
                 roundID,
@@ -106,7 +90,6 @@ public sealed class SystemStateTransformer
                 currentValue,
                 globalStateValues,
                 null,
-                allAttributes,
                 cancellationToken
             );
         }
@@ -115,13 +98,9 @@ public sealed class SystemStateTransformer
             await TransformCompositeAttributeAsync
             (
                 attr,
-                projectID,
                 sessionID,
-                sceneID,
-                roundID,
                 trigger,
                 globalStateValues,
-                allAttributes,
                 cancellationToken
             );
         }
@@ -130,7 +109,6 @@ public sealed class SystemStateTransformer
     private async Task TransformCategoryAttributeAsync
     (
         StateAttribute             attr,
-        long                       projectID,
         IReadOnlyList<Character>   characters,
         long                       sessionID,
         long                       sceneID,
@@ -138,7 +116,6 @@ public sealed class SystemStateTransformer
         SystemTrigger              trigger,
         Dictionary<long, string>   attrNameCache,
         Dictionary<string, string> globalStateValues,
-        IReadOnlyList<StateAttribute> allAttributes,
         CancellationToken          cancellationToken
     )
     {
@@ -158,7 +135,6 @@ public sealed class SystemStateTransformer
                 await TransformEnumAttributeAsync
                 (
                     attr,
-                    projectID,
                     sessionID,
                     sceneID,
                     roundID,
@@ -166,7 +142,6 @@ public sealed class SystemStateTransformer
                     currentValue,
                     charContext,
                     character.ID,
-                    allAttributes,
                     cancellationToken
                 );
             }
@@ -175,13 +150,9 @@ public sealed class SystemStateTransformer
                 await TransformCompositeAttributeAsync
                 (
                     attr,
-                    projectID,
                     sessionID,
-                    sceneID,
-                    roundID,
                     trigger,
                     globalStateValues,
-                    allAttributes,
                     cancellationToken
                 );
             }
@@ -191,7 +162,6 @@ public sealed class SystemStateTransformer
     private async Task TransformEnumAttributeAsync
     (
         StateAttribute             attr,
-        long                       projectID,
         long                       sessionID,
         long?                      sceneID,
         long                       roundID,
@@ -199,7 +169,6 @@ public sealed class SystemStateTransformer
         string                     currentValue,
         Dictionary<string, string> stateValues,
         long?                      characterID,
-        IReadOnlyList<StateAttribute> allAttributes,
         CancellationToken          cancellationToken
     )
     {
@@ -246,30 +215,14 @@ public sealed class SystemStateTransformer
             newValue,
             characterID
         );
-
-        if (config.Effects.TryGetValue(newValue, out var effect))
-        {
-            foreach (var knowledgeIDStr in effect.InjectKnowledge)
-            {
-                if (long.TryParse(knowledgeIDStr, out var knowledgeID))
-                    InjectKnowledge(sessionID, knowledgeID);
-            }
-
-            if (!string.IsNullOrWhiteSpace(effect.Directive))
-                await AddDirectiveAsync(effect.Directive, projectID, sessionID, cancellationToken);
-        }
     }
 
     private async Task TransformCompositeAttributeAsync
     (
         StateAttribute             attr,
-        long                       projectID,
         long                       sessionID,
-        long?                      sceneID,
-        long                       roundID,
         SystemTrigger              trigger,
         Dictionary<string, string> globalStateValues,
-        IReadOnlyList<StateAttribute> allAttributes,
         CancellationToken          cancellationToken
     )
     {
@@ -306,12 +259,7 @@ public sealed class SystemStateTransformer
                 continue;
 
             if (item.Current >= item.Target && item.Target > 0)
-            {
                 await stateRepository.UpdateCompositeItemAsync(item.ID, null, item.Target, "system 自动完成", cancellationToken);
-
-                if (config.ItemCompleteEffect is not null)
-                    await ExecuteEffectAsync(config.ItemCompleteEffect, projectID, sessionID, sceneID, roundID, allAttributes, cancellationToken);
-            }
         }
     }
 
@@ -358,155 +306,6 @@ public sealed class SystemStateTransformer
         }
 
         return weights.Keys.Last();
-    }
-
-    private async Task ExecuteEffectAsync
-    (
-        Effect                        effect,
-        long                          projectID,
-        long                          sessionID,
-        long?                         sceneID,
-        long                          roundID,
-        IReadOnlyList<StateAttribute> allAttributes,
-        CancellationToken             cancellationToken
-    )
-    {
-        switch (effect.Type)
-        {
-            case EffectType.InjectKnowledge:
-                if (long.TryParse(effect.Target, out var knowledgeID))
-                    InjectKnowledge(sessionID, knowledgeID);
-
-                break;
-
-            case EffectType.ChangeDirective:
-                await AddDirectiveAsync(effect.Target, projectID, sessionID, cancellationToken);
-                break;
-
-            case EffectType.UpdateState:
-                await ExecuteUpdateStateEffectAsync(effect.Target, projectID, sessionID, sceneID, roundID, allAttributes, cancellationToken);
-                break;
-        }
-    }
-
-    private async Task ExecuteUpdateStateEffectAsync
-    (
-        string                        target,
-        long                          projectID,
-        long                          sessionID,
-        long?                         sceneID,
-        long                          roundID,
-        IReadOnlyList<StateAttribute> allAttributes,
-        CancellationToken             cancellationToken
-    )
-    {
-        var (attrName, op, value) = ParseUpdateStateTarget(target);
-
-        if (string.IsNullOrEmpty(attrName))
-            return;
-
-        var attr = allAttributes.FirstOrDefault(a => a.Name == attrName);
-
-        if (attr is null)
-        {
-            Log.Warning("Effect update_state: 属性 {AttrName} 不存在", attrName);
-            return;
-        }
-
-        if (op == '+')
-        {
-            var current   = await stateRepository.GetStateValueAsync(attr.ID, sessionID, cancellationToken);
-            var currentNum = float.Parse(current?.Value ?? "0", CultureInfo.InvariantCulture);
-            var delta     = float.Parse(value, CultureInfo.InvariantCulture);
-            var newValue  = (currentNum + delta).ToString(CultureInfo.InvariantCulture);
-
-            await stateRepository.SetStateValueAsync
-            (
-                attr.ID,
-                sessionID,
-                newValue,
-                StateChangeSource.System,
-                $"Effect 联动: {attrName}{op}{value}",
-                sceneID ?? 0,
-                roundID,
-                cancellationToken
-            );
-        }
-        else if (op == '=')
-        {
-            await stateRepository.SetStateValueAsync
-            (
-                attr.ID,
-                sessionID,
-                value,
-                StateChangeSource.System,
-                $"Effect 联动: {attrName}={value}",
-                sceneID ?? 0,
-                roundID,
-                cancellationToken
-            );
-        }
-    }
-
-    private void InjectKnowledge(long sessionID, long knowledgeID)
-    {
-        injectedKnowledge.AddOrUpdate
-        (
-            sessionID,
-            [knowledgeID],
-            (_, bag) =>
-            {
-                bag.Add(knowledgeID);
-                return bag;
-            }
-        );
-
-        Log.Information("Effect: inject_knowledge ID={KnowledgeID}", knowledgeID);
-    }
-
-    private async Task AddDirectiveAsync
-    (
-        string           content,
-        long             projectID,
-        long             sessionID,
-        CancellationToken cancellationToken
-    )
-    {
-        await directiveRepository.AddAsync
-        (
-            new ActiveDirective
-            {
-                ProjectID = projectID,
-                SessionID = sessionID,
-                Type      = DirectiveType.Tone,
-                Content   = content,
-                TTL       = 1
-            },
-            cancellationToken
-        );
-
-        Log.Information("Effect: change_directive Content={Directive}", content);
-    }
-
-    private static (string Name, char Op, string Value) ParseUpdateStateTarget(string target)
-    {
-        var plusIndex  = target.IndexOf('+');
-        var minusIndex = target.IndexOf('-');
-        var eqIndex    = target.IndexOf('=');
-
-        if (eqIndex > 0)
-            return (target[..eqIndex].Trim(), '=', target[(eqIndex + 1)..].Trim());
-
-        if (plusIndex > 0)
-            return (target[..plusIndex].Trim(), '+', target[(plusIndex + 1)..].Trim());
-
-        if (minusIndex > 0)
-        {
-            var delta = -float.Parse(target[(minusIndex + 1)..].Trim(), CultureInfo.InvariantCulture);
-            return (target[..minusIndex].Trim(), '+', delta.ToString(CultureInfo.InvariantCulture));
-        }
-
-        return (string.Empty, ' ', string.Empty);
     }
 
     private async Task<Dictionary<string, string>> BuildGlobalStateContextAsync
@@ -577,22 +376,6 @@ public sealed class SystemStateTransformer
                 }
             }
 
-            if (root.TryGetProperty("effects", out var effectsEl))
-            {
-                foreach (var effectProp in effectsEl.EnumerateObject())
-                {
-                    var effect = new EnumEffect();
-
-                    if (effectProp.Value.TryGetProperty("injectKnowledge", out var injEl))
-                        effect.InjectKnowledge = injEl.EnumerateArray().Select(e => e.GetString() ?? string.Empty).ToList();
-
-                    if (effectProp.Value.TryGetProperty("directive", out var dirEl))
-                        effect.Directive = dirEl.GetString() ?? string.Empty;
-
-                    config.Effects[effectProp.Name] = effect;
-                }
-            }
-
             return config;
         }
         catch (Exception ex)
@@ -622,12 +405,6 @@ public sealed class SystemStateTransformer
             if (root.TryGetProperty("regenerateCondition", out var condEl))
                 config.RegenerateCondition = condEl.GetString();
 
-            if (root.TryGetProperty("itemCompleteEffect", out var completeEl))
-                config.ItemCompleteEffect = ParseEffect(completeEl);
-
-            if (root.TryGetProperty("itemFailEffect", out var failEl))
-                config.ItemFailEffect = ParseEffect(failEl);
-
             return config;
         }
         catch (Exception ex)
@@ -635,28 +412,6 @@ public sealed class SystemStateTransformer
             Log.Warning(ex, "解析 composite 配置失败");
             return null;
         }
-    }
-
-    private static Effect? ParseEffect(JsonElement el)
-    {
-        if (el.ValueKind != JsonValueKind.Object)
-            return null;
-
-        var typeStr = el.TryGetProperty("type", out var typeEl) ? typeEl.GetString() : null;
-        var target  = el.TryGetProperty("target", out var targetEl) ? targetEl.GetString() : null;
-
-        if (typeStr is null)
-            return null;
-
-        var type = typeStr switch
-        {
-            "inject_knowledge" => EffectType.InjectKnowledge,
-            "change_directive" => EffectType.ChangeDirective,
-            "update_state"     => EffectType.UpdateState,
-            _                  => EffectType.UpdateState
-        };
-
-        return new Effect { Type = type, Target = target ?? string.Empty };
     }
 
     private static SystemTrigger ParseTrigger(string? value) =>
@@ -674,7 +429,6 @@ public sealed class SystemStateTransformer
         public Dictionary<string, Dictionary<string, float>> TransitionRules { get; set; } = [];
         public List<EnumCondition> Conditions { get; set; } = [];
         public SystemTrigger Trigger { get; set; } = SystemTrigger.RoundEnd;
-        public Dictionary<string, EnumEffect> Effects { get; set; } = [];
     }
 
     private sealed class EnumCondition
@@ -683,18 +437,10 @@ public sealed class SystemStateTransformer
         public Dictionary<string, float> Transition { get; set; } = [];
     }
 
-    private sealed class EnumEffect
-    {
-        public List<string> InjectKnowledge { get; set; } = [];
-        public string Directive { get; set; } = string.Empty;
-    }
-
     private sealed class CompositeConfig
     {
         public string GenerationGuide { get; set; } = string.Empty;
         public SystemTrigger? RegenerateTrigger { get; set; }
         public string? RegenerateCondition { get; set; }
-        public Effect? ItemCompleteEffect { get; set; }
-        public Effect? ItemFailEffect { get; set; }
     }
 }

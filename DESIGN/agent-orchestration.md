@@ -195,7 +195,7 @@ Orchestrator 接收并处理批次 (本地代码)
             │
             ▼
     系统执行状态变换
-    (system 驱动的变换 + Effect 触发)
+    (system 驱动的变换 + Phase 求值)
             │
             ▼
     记录所有衍生事件

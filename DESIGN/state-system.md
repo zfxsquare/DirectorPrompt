@@ -66,7 +66,7 @@ CompositeItem {
 
 narrative 驱动的值, State Agent 在每轮叙事后提取变更并调用 tool 落地。
 
-system 驱动的值, 系统在特定时机按配置的规则变换, 变换后可以触发效果 (注入知识、改变基调等), 这些效果反过来影响叙事。
+system 驱动的值, 系统在特定时机按配置的规则变换。变换后的值通过 Phase 机制驱动知识注入, 影响叙事走向。
 
 ## valueType × driver 的常见组合
 
@@ -82,6 +82,8 @@ system 驱动的值, 系统在特定时机按配置的规则变换, 变换后可
 
 ## config 结构
 
+所有 config 都可包含 `phases` 字段, 详见 [Phase](#phase-状态的阶段声明) 章节。
+
 ### numeric + narrative
 
 ```
@@ -90,6 +92,7 @@ system 驱动的值, 系统在特定时机按配置的规则变换, 变换后可
     max: float?,
     unit: string?,
     changeRules: string       // 自然语言, 指导 State Agent 如何提取变更
+    phases: Phase[]
 }
 ```
 
@@ -109,12 +112,7 @@ system 驱动的值, 系统在特定时机按配置的规则变换, 变换后可
         }
     ],
     trigger: enum,             // scene_change / round_end / custom
-    effects: {                 // 变换到某值时的效果
-        "暴风雨": {
-            injectKnowledge: ["weather_storm"],
-            directive: "叙事基调变为压抑"
-        }
-    }
+    phases: Phase[]
 }
 ```
 
@@ -127,30 +125,85 @@ system 驱动的值, 系统在特定时机按配置的规则变换, 变换后可
     generationGuide: string,          // 自然语言, 指导 AI 生成条目
     regenerateTrigger: enum,          // scene_change / round_end / custom
     regenerateCondition: string?,     // 可选, 满足条件才重新生成
-    itemCompleteEffect: Effect?,      // 条目完成时的效果
-    itemFailEffect: Effect?           // 条目失败时的效果
+    phases: Phase[]
 }
 ```
 
 composite 条目的生成是 system 触发的 (时机由系统控制), 但内容是 AI 生成的 (遵循生成指引)。条目的进度推进是 narrative 驱动的 (AI 在叙事中推进)。
 
-## Effect: 状态变更的连锁反应
+## Phase: 状态的阶段声明
 
-enum 变换和 composite 条目完成/失败时, 可以触发效果:
+Phase 是状态属性的阶段声明机制。每个状态属性可以定义多个阶段, 每个阶段通过表达式判断是否激活, 激活时自动注入关联的禁用知识。
+
+Phase 适用于所有 valueType, 是状态驱动的知识注入机制 — 状态值满足条件时持续注入关联的禁用知识。
+
+### Phase 模型
 
 ```
-Effect {
-    type: enum     // inject_knowledge / change_directive / update_state
-    target: string
+Phase {
+    name:              string        // 阶段名称, 如 "百万富翁"
+    expression:        string        // 表达式, 使用 {val} 代表当前值
+    knowledgeIds:      long[]        // 关联的知识条目 ID (必须为禁用状态)
+    knowledgeGroupIds: long[]        // 关联的知识分组 ID (必须为禁用状态)
 }
 ```
 
-| 效果类型 | 作用 | 示例 |
-|---------|------|------|
-| inject_knowledge | 注入知识条目到叙事上下文 | 天气变暴风雨 → 注入暴风雨相关知识 |
-| change_directive | 改变叙事基调 | 理智崩溃 → 基调变为混乱 |
-| update_state | 联动更新其他状态属性 | 任务完成 → 评价 +5 |
-Effect 是系统行为, 在状态变换时自动触发, 不经过 AI。
+### 表达式语法
+
+表达式使用 `{val}` 占位符代表当前状态值, 支持数学比较和字符串比较:
+
+| valueType | 表达式形式 | 示例 |
+|-----------|----------|------|
+| numeric | 数学表达式 | `{val} >= 1000000`、`{val} + 1000 >= 10000`、`{val} > 50 AND {val} < 100` |
+| enum | 字符串比较 | `{val} == "雪"`、`{val} != "阴"` |
+
+表达式计算结果为 true 时, 该阶段激活, 关联知识注入叙事上下文; 为 false 时不注入。
+
+### 知识关联规则
+
+- Phase 关联的知识必须在知识系统中处于**禁用状态** (Active = false)
+- 禁用状态的知识不参与常规知识检索, 仅通过 Phase 激活时注入
+- 一个 Phase 可以关联多条知识, 也可以关联整个知识分组
+- 关联知识分组时, 分组下的所有知识条目一并注入
+- 知识在 Phase 激活期间持续注入, Phase 失效后停止注入
+
+### 示例
+
+**numeric + narrative (金钱):**
+
+```
+phases: [
+    {
+        name: "百万富翁",
+        expression: "{val} >= 1000000",
+        knowledgeIds: [12, 15],
+        knowledgeGroupIds: [3]
+    },
+    {
+        name: "破产边缘",
+        expression: "{val} < 100",
+        knowledgeIds: [20]
+    }
+]
+```
+
+金钱达到 100 万时, 自动注入"百万富翁"相关的禁用知识; 跌破 100 时, 注入"破产边缘"相关知识。
+
+**enum + system (天气):**
+
+```
+phases: [
+    {
+        name: "暴雪天气",
+        expression: "{val} == \"雪\"",
+        knowledgeIds: [30, 31],
+        knowledgeGroupIds: [5]
+    }
+]
+```
+
+天气变换为"雪"时, 自动注入暴雪天时对应的禁用知识 (雪天场景描写、雪天可用事件等)。
+
 ## 变更审计
 
 所有状态变更都记录:
@@ -203,13 +256,14 @@ remove_item(attribute: string, itemId: long, reason: string)
 | update_state / set_state | ✓ | ✗ |
 | add_item / remove_item | ✓ | ✗ (仅 system 触发生成时由系统调用) |
 | update_item | ✓ | ✓ (推进进度是叙事的一部分) |
+
 ## 与其他系统的交互
 
 | 系统 | 交互方式 |
 |------|---------|
 | 时间线 | 状态变更按 sceneId 关联, 回滚时移除事件 |
-| 知识系统 | Effect 的 inject_knowledge 向叙事注入知识 |
+| 知识系统 | Phase 激活时向叙事注入禁用知识 |
 | 记忆系统 | 状态变更原因记录在 changeLog, Memory Sub-Agent 压缩时可参考 |
 | 人物系统 | 复用 StateAttribute 模型, scope=category; 人物状态跟随分类继承解析 |
 | 审计系统 | Audit Agent 用当前状态值 + changeLog 校验叙事一致性 |
-| Agent 编排 | Memory Sub-Agent 负责提取 narrative 驱动的变更 (全局 + 人物); system 驱动的变换由系统自动执行 |
+| Agent 编排 | Memory Sub-Agent 负责提取 narrative 驱动的变更 (全局 + 人物); system 驱动的变换由系统自动执行; Phase 的表达式求值和知识注入由系统自动完成 |

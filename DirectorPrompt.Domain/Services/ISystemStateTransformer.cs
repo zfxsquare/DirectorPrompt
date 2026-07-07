@@ -13,6 +13,4 @@ public interface ISystemStateTransformer
         SystemTrigger     trigger,
         CancellationToken cancellationToken = default
     );
-
-    IReadOnlyList<long> ConsumeInjectedKnowledge(long sessionID);
 }

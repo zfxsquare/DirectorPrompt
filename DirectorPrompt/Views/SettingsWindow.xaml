@@ -137,7 +137,8 @@
                                                         <ColumnDefinition Width="100" />
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock Grid.Column="0" Text="API Key"
+                                                    <TextBlock Grid.Column="0" 
+                                                               Text="{Binding [Settings.Agent.APIKey], Source={x:Static loc:Loc.Instance}}"
                                                                VerticalAlignment="Center" />
                                                     <ui:TextBox Grid.Column="1"
                                                                 Text="{Binding APIKey, UpdateSourceTrigger=PropertyChanged}"

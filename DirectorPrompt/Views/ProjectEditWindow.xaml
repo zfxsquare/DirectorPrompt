@@ -153,22 +153,28 @@
                                 FontSize="12"
                                 Foreground="Gray"
                                 Margin="0,0,0,16" />
-                            <TextBlock Text="Provider" FontWeight="SemiBold" Margin="0,0,0,4" />
+                            <TextBlock Text="{Binding [Settings.Agent.Provider], Source={x:Static loc:Loc.Instance}}"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,4" />
                             <ComboBox ItemsSource="{x:Static vm:AgentSettingViewModel.AvailableProviders}"
                                       SelectedItem="{Binding Embedding.Provider}"
                                       Margin="0,0,0,12" />
-                            <TextBlock Text="Endpoint" FontWeight="SemiBold" Margin="0,0,0,4" />
+                            <TextBlock Text="{Binding [Settings.Agent.Endpoint], Source={x:Static loc:Loc.Instance}}"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,4" />
                             <ui:TextBox Text="{Binding Embedding.Endpoint, UpdateSourceTrigger=PropertyChanged}"
                                         PlaceholderText="留空使用默认值"
                                         Margin="0,0,0,12" />
-                            <TextBlock Text="API Key" FontWeight="SemiBold" Margin="0,0,0,4" />
+                            <TextBlock Text="{Binding [Settings.Agent.APIKey], Source={x:Static loc:Loc.Instance}}"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,4" />
                             <ui:TextBox Text="{Binding Embedding.APIKey, UpdateSourceTrigger=PropertyChanged}"
                                         PlaceholderText="本地模型可留空"
                                         Margin="0,0,0,12" />
                             <TextBlock Text="模型名" FontWeight="SemiBold" Margin="0,0,0,4" />
                             <ui:TextBox Text="{Binding Embedding.ModelName, UpdateSourceTrigger=PropertyChanged}" />
 
-                            <ui:Button Content="测试连接"
+                            <ui:Button Content="{Binding [Settings.Agent.TestConnection], Source={x:Static loc:Loc.Instance}}"
                                        Icon="PlugConnected24"
                                        Appearance="Secondary"
                                        Margin="0,12,0,0"

@@ -9,7 +9,6 @@
     "Audit.Mode": "模式",
     "Audit.Title": "审计配置",
     "Changelog.Title": "更新日志",
-    "Changelog.UpdateNotice": "DirectorPrompt 已更新至 {0}",
     "Character.Category.Add": "添加分类",
     "Character.Category.AddAttribute": "添加分类属性",
     "Character.Category.DeleteFailed": "删除分类失败: {0}",

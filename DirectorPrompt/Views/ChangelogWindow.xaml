@@ -31,12 +31,6 @@
             </ui:TitleBar.Icon>
         </ui:TitleBar>
 
-        <TextBlock x:Name="UpdateNotice"
-                   Grid.Row="0"
-                   FontSize="14"
-                   FontWeight="SemiBold"
-                   Margin="24,4,24,8" />
-
         <FlowDocumentScrollViewer x:Name="ChangelogViewer"
                                   Grid.Row="1"
                                   Margin="24,0,24,8"

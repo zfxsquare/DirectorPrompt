@@ -105,7 +105,7 @@ foreach ($tag in $releaseArray) {
 }
 
 # ---- 3. Sort, build and upload release feeds ----
-$sortedAssets = $allAssets | Sort-Object { [Version]($_.Version -replace '^v', '') } -Descending
+$sortedAssets = $allAssets | Sort-Object { [Version]$_.Version } -Descending
 
 $releaseJson = @{ Assets = @($sortedAssets) } | ConvertTo-Json -Depth 3
 $releaseJsonPath = Join-Path $workDir 'releases.win.json'

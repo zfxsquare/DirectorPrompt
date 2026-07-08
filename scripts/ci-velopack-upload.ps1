@@ -37,9 +37,8 @@ function Write-Step([string]$Msg) {
 }
 
 # ---- Extract version ----
-$tagName = $env:GITHUB_REF -replace '.*/'
-$refver  = $tagName -replace '^v', ''
-Write-Step "Release version: $refver (tag: $tagName)"
+$version = $env:GITHUB_REF -replace '.*/'
+Write-Step "Release version: $version"
 
 # ---- Ensure tools ----
 if (-not (Get-Command vpk -ErrorAction SilentlyContinue)) {
@@ -59,10 +58,10 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # ---- 2. Pack new release ----
-Write-Step "Packing release $refver..."
+Write-Step "Packing release $version..."
 $packArgs = @(
     '-u', $PackId,
-    '-v', $refver,
+    '-v', $version,
     '-p', $PackDir,
     '-o', $OutputDir,
     '-e', $MainExe,
@@ -101,9 +100,8 @@ $mergedList = @($merged.Values)
 # ---- 6. Keep latest N versions ----
 $versionMap = @{}
 foreach ($a in $mergedList) {
-    $v = $a.Version -replace '^v', ''
-    if (-not $versionMap.ContainsKey($v)) { $versionMap[$v] = @() }
-    $versionMap[$v] += $a
+    if (-not $versionMap.ContainsKey($a.Version)) { $versionMap[$a.Version] = @() }
+    $versionMap[$a.Version] += $a
 }
 $sortedVersions = $versionMap.Keys | Sort-Object { [Version]$_ } -Descending
 $keepVersions   = $sortedVersions | Select-Object -First $MaxVersions
@@ -112,7 +110,7 @@ foreach ($v in $keepVersions) { $keepSet[$v] = $true }
 
 Write-Step "Keeping versions ($($keepVersions.Count)): $($keepVersions -join ', ')"
 
-$keepAssets       = @($mergedList | Where-Object { $v = $_.Version -replace '^v', ''; $keepSet.ContainsKey($v) })
+$keepAssets       = @($mergedList | Where-Object { $keepSet.ContainsKey($_.Version) })
 $keepSetFileNames = @{}
 foreach ($a in $keepAssets) { $keepSetFileNames[$a.FileName] = $true }
 
@@ -134,7 +132,7 @@ Get-ChildItem "$OutputDir\*.nupkg" -File | ForEach-Object {
 
 # ---- 9. Build and upload releases.win.json ----
 Write-Step 'Uploading releases.win.json...'
-$sortedKeep = $keepAssets | Sort-Object { [Version]($_.Version -replace '^v', '') } -Descending
+$sortedKeep = $keepAssets | Sort-Object { [Version]$_.Version } -Descending
 $releaseJson = @{ Assets = @($sortedKeep) } | ConvertTo-Json -Depth 3
 $releaseJsonPath = "$OutputDir\releases.win.merged.json"
 $releaseJson | Set-Content -LiteralPath $releaseJsonPath -Encoding utf8NoBOM
@@ -150,14 +148,14 @@ Write-Step 'Creating GitHub Release...'
 $portableZip = Get-ChildItem "$OutputDir\*-Portable.zip" -File | Select-Object -First 1
 
 $ghArgs = @(
-    'release', 'create', $tagName,
-    '--title', "Release $tagName",
-    '--notes', "DirectorPrompt $tagName"
+    'release', 'create', $version,
+    '--title', "Release $version",
+    '--notes', "DirectorPrompt $version"
 )
 if ($portableZip) {
     $ghArgs += $portableZip.FullName
 }
-Get-ChildItem "$OutputDir\*$refver*.nupkg" -File | ForEach-Object {
+Get-ChildItem "$OutputDir\*$version*.nupkg" -File | ForEach-Object {
     $ghArgs += $_.FullName
 }
 
@@ -166,9 +164,9 @@ if ($LASTEXITCODE -ne 0) {
     Write-Warning "GitHub Release creation failed (exit=$LASTEXITCODE), continuing."
 }
 else {
-    Write-Host "  GitHub Release created: $tagName"
+    Write-Host "  GitHub Release created: $version"
 
     Write-Host "  Uploading releases.win.json..."
-    gh release upload $tagName "$OutputDir\releases.win.json" --repo $env:GITHUB_REPOSITORY
+    gh release upload $version "$OutputDir\releases.win.json" --repo $env:GITHUB_REPOSITORY
     if ($LASTEXITCODE -ne 0) { Write-Warning "Upload of releases.win.json to GitHub Release failed (exit=$LASTEXITCODE)" }
 }

@@ -36,6 +36,8 @@ public partial class App : Application
 
         Log.Logger = LoggingConfiguration.CreateLogger();
 
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
         try
         {
             host = Host.CreateDefaultBuilder()
@@ -68,6 +70,7 @@ public partial class App : Application
 #endif
 
             var mainWindow = host.Services.GetRequiredService<MainWindow>();
+            ShutdownMode = ShutdownMode.OnLastWindowClose;
             mainWindow.Show();
         }
         catch (Exception ex)

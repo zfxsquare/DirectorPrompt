@@ -979,38 +979,6 @@ public sealed partial class MainViewModel
                 Categories  = string.Join(", ", categories.Where(cat => c.CategoryIDs.Contains(cat.ID)).Select(cat => cat.Name))
             };
 
-            var order = 1;
-
-            foreach (var d in c.EnterDirectives)
-            {
-                item.EnterDirectiveInput.Directives.Add
-                (
-                    new DirectiveItemViewModel
-                    {
-                        Type    = d.Type,
-                        Content = d.Content,
-                        Order   = order++,
-                        TTL     = d.TTL
-                    }
-                );
-            }
-
-            order = 1;
-
-            foreach (var d in c.ExitDirectives)
-            {
-                item.ExitDirectiveInput.Directives.Add
-                (
-                    new DirectiveItemViewModel
-                    {
-                        Type    = d.Type,
-                        Content = d.Content,
-                        Order   = order++,
-                        TTL     = d.TTL
-                    }
-                );
-            }
-
             var stateValues = await characterRepository.GetCharacterStateValuesAsync(c.ID);
 
             foreach (var sv in stateValues)
@@ -1158,29 +1126,6 @@ public sealed partial class MainViewModel
         }
     }
 
-    [RelayCommand]
-    private async Task SaveCharacterDirectivesAsync(CharacterPanelItemViewModel item)
-    {
-        var enterDirectives = item.EnterDirectiveInput.Directives.Select
-        (d => new DirectiveConfig
-            {
-                Type    = d.Type,
-                Content = d.Content,
-                TTL     = d.TTL
-            }
-        ).ToList();
-
-        var exitDirectives = item.ExitDirectiveInput.Directives.Select
-        (d => new DirectiveConfig
-            {
-                Type    = d.Type,
-                Content = d.Content,
-                TTL     = d.TTL
-            }
-        ).ToList();
-
-        await characterRepository.UpdateDirectivesAsync(item.ID, enterDirectives, exitDirectives);
-    }
 }
 
 public sealed class PipelineStageViewModel : INotifyPropertyChanged

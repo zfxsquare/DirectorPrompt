@@ -614,33 +614,6 @@
                                                         </DataTemplate>
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
-
-                                                <TextBlock
-                                                    Text="{Binding [Phase.EnterDirectives], Source={x:Static loc:Loc.Instance}}"
-                                                    FontSize="11"
-                                                    FontWeight="SemiBold"
-                                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                    Margin="0,6,0,2" />
-                                                <components:DirectiveInputControl
-                                                    DirectiveInput="{Binding EnterDirectiveInput}" />
-
-                                                <TextBlock
-                                                    Text="{Binding [Phase.ExitDirectives], Source={x:Static loc:Loc.Instance}}"
-                                                    FontSize="11"
-                                                    FontWeight="SemiBold"
-                                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                    Margin="0,6,0,2" />
-                                                <components:DirectiveInputControl
-                                                    DirectiveInput="{Binding ExitDirectiveInput}" />
-
-                                                <ui:Button
-                                                    Content="{Binding [Common.Save], Source={x:Static loc:Loc.Instance}}"
-                                                    Icon="Save24"
-                                                    HorizontalAlignment="Right"
-                                                    Margin="0,4,0,0"
-                                                    Padding="12,6"
-                                                    Command="{Binding DataContext.SaveCharacterDirectivesCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
-                                                    CommandParameter="{Binding}" />
                                             </StackPanel>
                                         </StackPanel>
                                     </Border>

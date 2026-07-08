@@ -21,7 +21,6 @@ public sealed class Orchestrator
     IStateRepository             stateRepository,
     ISystemStateTransformer      systemStateTransformer,
     PhaseEvaluator               phaseEvaluator,
-    CharacterTransitionEvaluator characterTransitionEvaluator,
     DirectiveProcessingStage     directiveProcessingStage,
     RetrievalStage               retrievalStage,
     GenerationStage              generationStage,
@@ -631,7 +630,7 @@ public sealed class Orchestrator
         CancellationToken cancellationToken
     )
     {
-        var sources = new List<ITransitionSource> { phaseEvaluator, characterTransitionEvaluator };
+        var sources = new List<ITransitionSource> { phaseEvaluator };
 
         var results = new List<(ITransitionSource Source, TransitionResult Result)>();
 

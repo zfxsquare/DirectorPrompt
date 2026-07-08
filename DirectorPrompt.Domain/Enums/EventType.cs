@@ -9,6 +9,5 @@ public enum EventType
     CharacterUpdate,
     SceneChange,
     DirectiveChange,
-    PhaseTransition,
-    CharacterTransition
+    PhaseTransition
 }

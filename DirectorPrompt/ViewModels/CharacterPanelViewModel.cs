@@ -55,10 +55,6 @@ public sealed partial class CharacterPanelItemViewModel : ObservableObject
     public ObservableCollection<CharacterStateValueViewModel> StateValues { get; } = [];
 
     public ObservableCollection<CharacterRelationViewModel> Relations { get; } = [];
-
-    public DirectiveInputViewModel EnterDirectiveInput { get; } = new();
-
-    public DirectiveInputViewModel ExitDirectiveInput { get; } = new();
 }
 
 public sealed partial class CharacterCategoryEditViewModel : ObservableObject

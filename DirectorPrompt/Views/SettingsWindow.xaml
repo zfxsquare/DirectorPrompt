@@ -369,9 +369,9 @@
 
                 <StackPanel Grid.Column="1"
                             Orientation="Horizontal">
-                    <ui:Button Content="{Binding [Common.Close], Source={x:Static loc:Loc.Instance}}"
+                    <ui:Button Content="{Binding [Common.Cancel], Source={x:Static loc:Loc.Instance}}"
                                Margin="0,0,8,0"
-                               Click="OnCloseClick" />
+                               Click="OnCancelClick" />
                     <ui:Button Content="{Binding [Common.Save], Source={x:Static loc:Loc.Instance}}"
                                Appearance="Primary"
                                Click="OnSaveClick"

@@ -2,7 +2,7 @@ namespace DirectorPrompt.Domain.Configurations;
 
 public record OrchestratorConfig
 {
-    public List<AgentDefinition> Agents { get; init; } = [];
+    public List<AgentDefinition> Agents { get; set; } = [];
 
     public AuditConfig AuditConfig { get; init; } = new();
 

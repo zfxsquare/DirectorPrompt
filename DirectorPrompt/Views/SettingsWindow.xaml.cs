@@ -38,9 +38,20 @@ public partial class SettingsWindow : FluentWindow
                                        Visibility.Collapsed;
     }
 
-    private async void OnSaveClick(object sender, RoutedEventArgs e) =>
+    private async void OnSaveClick(object sender, RoutedEventArgs e)
+    {
         await viewModel.SaveCommand.ExecuteAsync(null);
 
-    private void OnCloseClick(object sender, RoutedEventArgs e) =>
+        if (viewModel.SaveSuccess)
+        {
+            DialogResult = true;
+            Close();
+        }
+    }
+
+    private void OnCancelClick(object sender, RoutedEventArgs e)
+    {
+        DialogResult = false;
         Close();
+    }
 }

@@ -14,6 +14,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly IModelConnectionTester connectionTester;
     private readonly ILocalizationService   localizationService;
     private readonly UserSettings           userSettings;
+    private readonly OrchestratorConfig     orchestratorConfig;
+
+    public bool SaveSuccess { get; private set; }
 
     [ObservableProperty]
     public partial bool IsSaving { get; set; }
@@ -35,12 +38,14 @@ public sealed partial class SettingsViewModel : ObservableObject
     (
         UserSettings           userSettings,
         IModelConnectionTester connectionTester,
-        ILocalizationService   localizationService
+        ILocalizationService   localizationService,
+        OrchestratorConfig     orchestratorConfig
     )
     {
         this.connectionTester    = connectionTester;
         this.localizationService = localizationService;
         this.userSettings        = userSettings;
+        this.orchestratorConfig  = orchestratorConfig;
 
         LoadSettings(userSettings);
     }
@@ -104,7 +109,7 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         try
         {
-            userSettings.Orchestrator.Agents = Agents.Select
+            var agents = Agents.Select
             (a => new AgentDefinition
                 {
                     Role = a.Role,
@@ -121,6 +126,9 @@ public sealed partial class SettingsViewModel : ObservableObject
                 }
             ).ToList();
 
+            userSettings.Orchestrator.Agents = agents;
+            orchestratorConfig.Agents        = agents;
+
             userSettings.EmbeddingConfig = new ModelConfig
             {
                 Provider  = Embedding.Provider,
@@ -133,7 +141,7 @@ public sealed partial class SettingsViewModel : ObservableObject
 
             await userSettings.SaveAsync();
 
-            ValidationMessage = Loc.Get("Settings.Saved");
+            SaveSuccess = true;
         }
         catch (Exception ex)
         {

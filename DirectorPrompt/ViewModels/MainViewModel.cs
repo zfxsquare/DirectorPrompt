@@ -727,19 +727,26 @@ public sealed partial class MainViewModel
     partial void OnCurrentSessionChanged(Session? value)
     {
         Dialog.Clear();
+        _ = SaveSessionStateAsync();
 
-        if (value is not null)
+        if (value is null)
         {
-            Log.Information("切换对话: ID={SessionID}", value.ID);
-
-            _ = SaveSessionStateAsync();
-
-            if (CurrentProject is not null && !string.IsNullOrWhiteSpace(CurrentProject.OpeningMessage))
-                Dialog.AddOpeningMessage(CurrentProject.OpeningMessage);
-
-            _ = LoadDialogHistoryAsync(value.ID);
-            _ = RefreshSidebarAsync();
+            DirectiveInput.Clear();
+            StatePanel.Clear();
+            DirectivesPanel.Clear();
+            CharacterPanel.Clear();
+            MemoryPanel.Clear();
+            ResetPipelineStages();
+            return;
         }
+
+        Log.Information("切换对话: ID={SessionID}", value.ID);
+
+        if (CurrentProject is not null && !string.IsNullOrWhiteSpace(CurrentProject.OpeningMessage))
+            Dialog.AddOpeningMessage(CurrentProject.OpeningMessage);
+
+        _ = LoadDialogHistoryAsync(value.ID);
+        _ = RefreshSidebarAsync();
     }
 
     private async Task SaveSessionStateAsync()

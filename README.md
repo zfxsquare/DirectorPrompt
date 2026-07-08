@@ -47,10 +47,9 @@ dotnet run --project DirectorPrompt
 
 ### 首次使用
 
-1. 启动后进入设置，配置 AI 接口（OpenAI 兼容端点或本地 Ollama）
-2. 创建项目，配置 Embedding 模型（建议与 Chat 同 Provider）
-3. 编写世界观概述和叙事风格
-4. 添加知识条目
+1. 启动后进入设置，配置 AI 接口，配置 Embedding 模型
+2. 创建项目
+3. 编写项目提示词、填充知识条目、设定任务分类、规定状态系统
 5. 开始游玩
 
 ---

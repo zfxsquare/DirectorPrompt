@@ -574,9 +574,11 @@
                                                             Text="{Binding [Character.Category.ParentCategories], Source={x:Static loc:Loc.Instance}}"
                                                             FontWeight="SemiBold"
                                                             Margin="0,0,0,4" />
-                                                        <ui:TextBox
-                                                            Text="{Binding ParentCategoryIDsText, UpdateSourceTrigger=PropertyChanged}"
-                                                            PlaceholderText="{Binding [Character.Category.ParentCategoriesPlaceholder], Source={x:Static loc:Loc.Instance}}" />
+                                                        <components:MultiSelectComboBox
+                                                            ItemsSource="{Binding AvailableParentCategories}"
+                                                            DisplayMemberPath="Name"
+                                                            SelectedMemberPath="IsSelected"
+                                                            Watermark="{Binding [Character.Category.ParentCategoriesPlaceholder], Source={x:Static loc:Loc.Instance}}" />
                                                     </StackPanel>
                                                 </Grid>
 

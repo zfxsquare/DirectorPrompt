@@ -331,6 +331,8 @@ public sealed partial class ProjectEditViewModel : ObservableObject
             CharacterCategories.Add(vm);
         }
 
+        RefreshAvailableParentCategories();
+
         foreach (var attr in attributes)
         {
             var value = values.FirstOrDefault(v => v.AttributeID == attr.ID);
@@ -713,6 +715,12 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         catVM?.StateAttributes.Remove(attribute);
     }
 
+    private void RefreshAvailableParentCategories()
+    {
+        foreach (var cat in CharacterCategories)
+            cat.PopulateAvailableParentCategories(CharacterCategories);
+    }
+
     [RelayCommand]
     private async Task AddCharacterCategoryAsync()
     {
@@ -733,6 +741,8 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         var vm = new CharacterCategoryEditViewModel();
         vm.SyncFromModel(created);
         CharacterCategories.Add(vm);
+
+        RefreshAvailableParentCategories();
     }
 
     [RelayCommand]
@@ -764,6 +774,8 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         {
             await characterRepository.DeleteCategoryAsync(category.ID);
             CharacterCategories.Remove(category);
+
+            RefreshAvailableParentCategories();
 
             var categoryAttrs = StateAttributes
                                 .Where(a => a.Scope == StateScope.Category && a.CategoryID == category.ID)

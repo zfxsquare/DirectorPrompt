@@ -57,6 +57,16 @@ public sealed partial class CharacterPanelItemViewModel : ObservableObject
     public ObservableCollection<CharacterRelationViewModel> Relations { get; } = [];
 }
 
+public sealed partial class CategorySelectionItem : ObservableObject
+{
+    public required long ID { get; init; }
+
+    public required string Name { get; init; }
+
+    [ObservableProperty]
+    public partial bool IsSelected { get; set; }
+}
+
 public sealed partial class CharacterCategoryEditViewModel : ObservableObject
 {
     [ObservableProperty]
@@ -68,32 +78,53 @@ public sealed partial class CharacterCategoryEditViewModel : ObservableObject
     [ObservableProperty]
     public partial string? Description { get; set; }
 
-    [ObservableProperty]
-    public partial string ParentCategoryIDsText { get; set; } = string.Empty;
+    public ObservableCollection<CategorySelectionItem> AvailableParentCategories { get; } = [];
 
     public ObservableCollection<StateAttributeEditViewModel> StateAttributes { get; } = [];
 
     public bool HasStateAttributes => StateAttributes.Count > 0;
 
+    private HashSet<long> pendingParentCategoryIDs = [];
+
     public void SyncFromModel(CharacterCategory category)
     {
-        ID                    = category.ID;
-        Name                  = category.Name;
-        Description           = category.Description;
-        ParentCategoryIDsText = string.Join(", ", category.ParentCategoryIDs);
+        ID          = category.ID;
+        Name        = category.Name;
+        Description = category.Description;
+
+        pendingParentCategoryIDs = [..category.ParentCategoryIDs];
+    }
+
+    public void PopulateAvailableParentCategories(IEnumerable<CharacterCategoryEditViewModel> allCategories)
+    {
+        var currentSelections = AvailableParentCategories
+            .Where(i => i.IsSelected)
+            .Select(i => i.ID)
+            .ToHashSet();
+
+        foreach (var id in pendingParentCategoryIDs)
+            currentSelections.Add(id);
+
+        AvailableParentCategories.Clear();
+
+        foreach (var cat in allCategories.Where(c => c.ID != ID))
+        {
+            var item = new CategorySelectionItem
+            {
+                ID         = cat.ID,
+                Name       = cat.Name,
+                IsSelected = currentSelections.Contains(cat.ID)
+            };
+
+            AvailableParentCategories.Add(item);
+        }
     }
 
     public CharacterCategory ToModel(long projectID)
     {
-        var parentIDs = ParentCategoryIDsText
-                        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                        .Select
-                        (s => long.TryParse(s, out var id) ?
-                                  id :
-                                  0
-                        )
-                        .Where(id => id > 0)
-                        .ToArray();
+        var parentIDs = AvailableParentCategories.Count > 0
+                            ? AvailableParentCategories.Where(i => i.IsSelected).Select(i => i.ID).ToArray()
+                            : pendingParentCategoryIDs.ToArray();
 
         return new CharacterCategory
         {

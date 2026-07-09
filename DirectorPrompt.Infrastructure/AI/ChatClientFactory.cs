@@ -52,6 +52,8 @@ public sealed class ChatClientFactory : IChatClientFactory
         if (!string.IsNullOrWhiteSpace(endpoint))
             options.Endpoint = new Uri(endpoint);
 
+        CustomHeaderPipelinePolicy.ApplyToOptions(options, provider.CustomHeaders);
+
         var apiKey = !string.IsNullOrWhiteSpace(provider.APIKey) ?
                          provider.APIKey :
                          providerType switch
@@ -71,11 +73,14 @@ public sealed class ChatClientFactory : IChatClientFactory
         if (string.IsNullOrWhiteSpace(provider.APIKey))
             throw new ArgumentException("Anthropic Provider 需要 API Key");
 
+        var customHeaders = CustomHeaderPipelinePolicy.Parse(provider.CustomHeaders);
+
         return new AnthropicChatClient
         (
             provider.APIKey,
             model.ModelName,
-            provider.Endpoint
+            provider.Endpoint,
+            customHeaders
         );
     }
 }

@@ -62,10 +62,11 @@ public sealed class AgentConfigResolver
 
         return new ResolvedEmbeddingConfig
         {
-            Provider  = provider.Provider,
-            Endpoint  = provider.Endpoint,
-            APIKey    = provider.APIKey,
-            ModelName = embeddingConfig.ModelName
+            Provider      = provider.Provider,
+            Endpoint      = provider.Endpoint,
+            APIKey        = provider.APIKey,
+            ModelName     = embeddingConfig.ModelName,
+            CustomHeaders = provider.CustomHeaders
         };
     }
 }

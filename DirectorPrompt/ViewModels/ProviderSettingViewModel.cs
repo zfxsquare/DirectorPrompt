@@ -19,5 +19,8 @@ public sealed partial class ProviderSettingViewModel : ObservableObject
     [ObservableProperty]
     public partial string APIKey { get; set; } = string.Empty;
 
+    [ObservableProperty]
+    public partial string CustomHeaders { get; set; } = string.Empty;
+
     public static string[] AvailableProviders { get; } = ["openai", "ollama", "anthropic"];
 }

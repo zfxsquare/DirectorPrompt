@@ -12,16 +12,18 @@ public sealed class EmbeddingService : IEmbeddingService
     private readonly string  endpoint;
     private readonly string? apiKey;
     private readonly string  modelName;
+    private readonly string? customHeaders;
 
-    public EmbeddingService(string provider, string endpoint, string? apiKey, string modelName)
+    public EmbeddingService(string provider, string endpoint, string? apiKey, string modelName, string? customHeaders = null)
     {
-        this.provider  = provider;
-        this.endpoint  = endpoint;
-        this.apiKey    = apiKey;
-        this.modelName = modelName;
+        this.provider      = provider;
+        this.endpoint      = endpoint;
+        this.apiKey        = apiKey;
+        this.modelName     = modelName;
+        this.customHeaders = customHeaders;
     }
 
-    public EmbeddingService(ResolvedEmbeddingConfig config) : this(config.Provider, config.Endpoint, config.APIKey, config.ModelName)
+    public EmbeddingService(ResolvedEmbeddingConfig config) : this(config.Provider, config.Endpoint, config.APIKey, config.ModelName, config.CustomHeaders)
     {
     }
 
@@ -79,6 +81,8 @@ public sealed class EmbeddingService : IEmbeddingService
 
         if (!string.IsNullOrWhiteSpace(endpoint))
             options.Endpoint = new Uri(endpoint);
+
+        CustomHeaderPipelinePolicy.ApplyToOptions(options, customHeaders);
 
         if (!string.IsNullOrWhiteSpace(apiKey))
         {

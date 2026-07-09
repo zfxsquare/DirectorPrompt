@@ -204,6 +204,18 @@
                                                                 Text="{Binding APIKey, UpdateSourceTrigger=PropertyChanged}"
                                                                 PlaceholderText="{Binding [Settings.Agent.Placeholder.APIKey], Source={x:Static loc:Loc.Instance}}" />
                                                 </Grid>
+
+                                                <StackPanel Margin="0, 8">
+                                                    <TextBlock Text="{Binding [Settings.Provider.CustomHeaders], Source={x:Static loc:Loc.Instance}}"
+                                                               Margin="0,0,0,6" />
+                                                    <ui:TextBox Text="{Binding CustomHeaders, UpdateSourceTrigger=PropertyChanged}"
+                                                                AcceptsReturn="True"
+                                                                TextWrapping="Wrap"
+                                                                MinHeight="80"
+                                                                MaxHeight="200"
+                                                                VerticalScrollBarVisibility="Auto"
+                                                                PlaceholderText='{}{"X-Custom-Header": "value"}' />
+                                                </StackPanel>
                                             </StackPanel>
                                         </ui:CardExpander>
                                     </DataTemplate>

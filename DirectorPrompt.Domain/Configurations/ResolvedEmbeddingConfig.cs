@@ -10,5 +10,7 @@ public record ResolvedEmbeddingConfig
 
     public string ModelName { get; init; } = string.Empty;
 
+    public string? CustomHeaders { get; init; }
+
     public string Fingerprint => $"{Provider}|{Endpoint}|{ModelName}";
 }

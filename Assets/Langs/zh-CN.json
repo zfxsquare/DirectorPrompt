@@ -186,6 +186,7 @@
     "Settings.Prompt.DisplayName": "名称",
     "Settings.Prompt.Title": "提示词配置",
     "Settings.Provider.DisplayName": "名称",
+    "Settings.Provider.CustomHeaders": "自定义请求头 (JSON 格式)",
     "Settings.Provider.Endpoint": "端点地址",
     "Settings.Provider.Provider": "接口格式",
     "Settings.Provider.Title": "提供商配置",

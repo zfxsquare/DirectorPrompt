@@ -11,4 +11,6 @@ public record ProviderConfig
     public string Endpoint { get; init; } = string.Empty;
 
     public string? APIKey { get; init; }
+
+    public string? CustomHeaders { get; init; }
 }

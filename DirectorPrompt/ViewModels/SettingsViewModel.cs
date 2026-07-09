@@ -81,11 +81,12 @@ public sealed partial class SettingsViewModel : ObservableObject
             (
                 new ProviderSettingViewModel
                 {
-                    ID          = config.ID,
-                    DisplayName = config.DisplayName,
-                    Provider    = config.Provider,
-                    Endpoint    = config.Endpoint,
-                    APIKey      = config.APIKey ?? string.Empty
+                    ID            = config.ID,
+                    DisplayName   = config.DisplayName,
+                    Provider      = config.Provider,
+                    Endpoint      = config.Endpoint,
+                    APIKey        = config.APIKey ?? string.Empty,
+                    CustomHeaders = config.CustomHeaders ?? string.Empty
                 }
             );
         }
@@ -224,11 +225,14 @@ public sealed partial class SettingsViewModel : ObservableObject
             (
                 p => new ProviderConfig
                 {
-                    ID          = p.ID,
-                    DisplayName = p.DisplayName,
-                    Provider    = p.Provider,
-                    Endpoint    = p.Endpoint,
-                    APIKey      = p.APIKey
+                    ID            = p.ID,
+                    DisplayName   = p.DisplayName,
+                    Provider      = p.Provider,
+                    Endpoint      = p.Endpoint,
+                    APIKey        = p.APIKey,
+                    CustomHeaders = string.IsNullOrWhiteSpace(p.CustomHeaders) ?
+                                        null :
+                                        p.CustomHeaders
                 }
             ).ToList();
 
@@ -319,7 +323,7 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         try
         {
-            var models = await connectionTester.FetchModelsAsync(provider.Provider, provider.Endpoint, provider.APIKey);
+            var models = await connectionTester.FetchModelsAsync(provider.Provider, provider.Endpoint, provider.APIKey, provider.CustomHeaders);
 
             model.AvailableModels.Clear();
             foreach (var m in models)
@@ -357,7 +361,7 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         try
         {
-            await connectionTester.TestChatAsync(provider.Provider, provider.Endpoint, provider.APIKey, model.ModelName);
+            await connectionTester.TestChatAsync(provider.Provider, provider.Endpoint, provider.APIKey, model.ModelName, provider.CustomHeaders);
 
             model.ConnectionSuccess = true;
             model.ConnectionMessage = Loc.Get("Settings.ConnectionSuccess", model.ModelName);
@@ -400,7 +404,7 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         try
         {
-            var models = await connectionTester.FetchModelsAsync(provider.Provider, provider.Endpoint, provider.APIKey);
+            var models = await connectionTester.FetchModelsAsync(provider.Provider, provider.Endpoint, provider.APIKey, provider.CustomHeaders);
 
             Embedding.AvailableModels.Clear();
             foreach (var m in models)
@@ -435,7 +439,7 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         try
         {
-            await connectionTester.TestEmbeddingAsync(provider.Provider, provider.Endpoint, provider.APIKey, Embedding.ModelName);
+            await connectionTester.TestEmbeddingAsync(provider.Provider, provider.Endpoint, provider.APIKey, Embedding.ModelName, provider.CustomHeaders);
 
             Embedding.ConnectionSuccess = true;
             Embedding.ConnectionMessage = Loc.Get("Settings.ConnectionSuccess", Embedding.ModelName);

@@ -14,6 +14,7 @@ public sealed class ModelConnectionTester : IModelConnectionTester
         string            provider,
         string            endpoint,
         string?           apiKey,
+        string?           customHeaders = null,
         CancellationToken cancellationToken = default
     )
     {
@@ -36,6 +37,8 @@ public sealed class ModelConnectionTester : IModelConnectionTester
         if (!string.IsNullOrWhiteSpace(apiKey))
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
+        ApplyCustomHeaders(request, customHeaders);
+
         using var response = await httpClient.SendAsync(request, cancellationToken);
 
         var content = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -57,6 +60,7 @@ public sealed class ModelConnectionTester : IModelConnectionTester
         string            endpoint,
         string?           apiKey,
         string            modelName,
+        string?           customHeaders = null,
         CancellationToken cancellationToken = default
     )
     {
@@ -67,11 +71,11 @@ public sealed class ModelConnectionTester : IModelConnectionTester
 
         if (normalizedProvider == "anthropic")
         {
-            await TestAnthropicChatAsync(apiKey, endpoint, modelName, cancellationToken);
+            await TestAnthropicChatAsync(apiKey, endpoint, modelName, customHeaders, cancellationToken);
             return;
         }
 
-        var client     = CreateOpenAIClient(normalizedProvider, endpoint, apiKey);
+        var client     = CreateOpenAIClient(normalizedProvider, endpoint, apiKey, customHeaders);
         var chatClient = client.GetChatClient(modelName).AsIChatClient();
 
         var messages = new List<ChatMessage>
@@ -91,6 +95,7 @@ public sealed class ModelConnectionTester : IModelConnectionTester
         string            endpoint,
         string?           apiKey,
         string            modelName,
+        string?           customHeaders = null,
         CancellationToken cancellationToken = default
     )
     {
@@ -106,7 +111,7 @@ public sealed class ModelConnectionTester : IModelConnectionTester
             _ => endpoint
         };
 
-        var client          = CreateOpenAIClient(normalizedProvider, effectiveEndpoint, apiKey);
+        var client          = CreateOpenAIClient(normalizedProvider, effectiveEndpoint, apiKey, customHeaders);
         var embeddingClient = client.GetEmbeddingClient(modelName);
         var generator       = embeddingClient.AsIEmbeddingGenerator();
 
@@ -121,13 +126,16 @@ public sealed class ModelConnectionTester : IModelConnectionTester
         string?           apiKey,
         string?           endpoint,
         string            modelName,
+        string?           customHeaders,
         CancellationToken cancellationToken
     )
     {
         if (string.IsNullOrWhiteSpace(apiKey))
             throw new ArgumentException("Anthropic Provider 需要 API Key");
 
-        using var client = new AnthropicChatClient(apiKey, modelName, endpoint);
+        var parsedHeaders = CustomHeaderPipelinePolicy.Parse(customHeaders);
+
+        using var client = new AnthropicChatClient(apiKey, modelName, endpoint, parsedHeaders);
 
         var messages = new List<ChatMessage>
         {
@@ -140,6 +148,20 @@ public sealed class ModelConnectionTester : IModelConnectionTester
 
         if (response.Messages.Count == 0)
             throw new InvalidOperationException("模型返回了空响应");
+    }
+
+    private static void ApplyCustomHeaders(HttpRequestMessage request, string? customHeaders)
+    {
+        var parsed = CustomHeaderPipelinePolicy.Parse(customHeaders);
+
+        if (parsed is null)
+            return;
+
+        foreach (var (key, value) in parsed)
+        {
+            request.Headers.Remove(key);
+            request.Headers.Add(key, value);
+        }
     }
 
     private static string BuildModelsURI(string endpoint)
@@ -178,12 +200,14 @@ public sealed class ModelConnectionTester : IModelConnectionTester
                    .ToList();
     }
 
-    private static OpenAIClient CreateOpenAIClient(string provider, string? endpoint, string? apiKey)
+    private static OpenAIClient CreateOpenAIClient(string provider, string? endpoint, string? apiKey, string? customHeaders = null)
     {
         var options = new OpenAIClientOptions();
 
         if (!string.IsNullOrWhiteSpace(endpoint))
             options.Endpoint = new Uri(endpoint);
+
+        CustomHeaderPipelinePolicy.ApplyToOptions(options, customHeaders);
 
         var effectiveKey = !string.IsNullOrWhiteSpace(apiKey) ?
                                apiKey :

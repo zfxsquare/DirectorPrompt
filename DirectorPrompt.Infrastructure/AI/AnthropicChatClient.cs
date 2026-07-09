@@ -17,7 +17,7 @@ public sealed class AnthropicChatClient : IChatClient
     private readonly bool       ownsClient;
     private readonly string     modelID;
 
-    public AnthropicChatClient(string apiKey, string modelID, string? endpoint = null, HttpClient? httpClient = null)
+    public AnthropicChatClient(string apiKey, string modelID, string? endpoint = null, Dictionary<string, string>? customHeaders = null, HttpClient? httpClient = null)
     {
         this.modelID = modelID;
         ownsClient   = httpClient is null;
@@ -31,6 +31,17 @@ public sealed class AnthropicChatClient : IChatClient
         client.DefaultRequestHeaders.Add("x-api-key",         apiKey);
         client.DefaultRequestHeaders.Add("anthropic-version", ANTHROPIC_VERSION);
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+        if (customHeaders is not null)
+        {
+            foreach (var (key, value) in customHeaders)
+            {
+                if (client.DefaultRequestHeaders.Contains(key))
+                    client.DefaultRequestHeaders.Remove(key);
+
+                client.DefaultRequestHeaders.Add(key, value);
+            }
+        }
     }
 
     public async Task<ChatResponse> GetResponseAsync

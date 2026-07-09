@@ -6,6 +6,5 @@ public enum AgentTaskType
     Knowledge,
     MemoryRecall,
     MemoryUpdate,
-    Audit,
     Scene
 }

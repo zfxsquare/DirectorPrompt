@@ -34,12 +34,6 @@ public sealed class PipelineContext
 
     public string? CorrectionGuidance { get; set; }
 
-    public List<Violation> Violations { get; } = [];
-
-    public bool AuditPassed { get; set; }
-
-    public int AuditRetryCount { get; set; }
-
     public Action<string, string>? OnStreamingUpdate { get; set; }
 
     public Action<PipelineStageUpdate>? OnStageUpdate { get; set; }

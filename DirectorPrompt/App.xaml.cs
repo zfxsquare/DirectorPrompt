@@ -1,4 +1,4 @@
-﻿using System.IO;
+﻿﻿using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using DirectorPrompt.Agents;
@@ -220,7 +220,6 @@ public partial class App
         services.AddSingleton<PhaseEvaluator>();
         services.AddSingleton<RetrievalStage>();
         services.AddSingleton<GenerationStage>();
-        services.AddSingleton<AuditStage>();
         services.AddSingleton<PostProcessingStage>();
 
         services.AddSingleton<Orchestrator>();

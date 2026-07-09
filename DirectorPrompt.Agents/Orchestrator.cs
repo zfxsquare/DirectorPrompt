@@ -24,7 +24,6 @@ public sealed class Orchestrator
     DirectiveProcessingStage directiveProcessingStage,
     RetrievalStage           retrievalStage,
     GenerationStage          generationStage,
-    AuditStage               auditStage,
     PostProcessingStage      postProcessingStage,
     AgentConfigResolver      agentConfigResolver,
     UserSettings             userSettings
@@ -121,11 +120,9 @@ public sealed class Orchestrator
 
             Log.Information
             (
-                "Orchestrator 批次处理完成: 对话={SessionID}, 轮次={RoundID}, 审计通过={Passed}, 违规数={Violations}, 叙事长度={NarrativeLen}",
+                "Orchestrator 批次处理完成: 对话={SessionID}, 轮次={RoundID}, 叙事长度={NarrativeLen}",
                 sessionID,
                 roundID,
-                context.AuditPassed,
-                context.Violations.Count,
                 context.NarrativeOutput?.Length ?? 0
             );
 
@@ -241,10 +238,9 @@ public sealed class Orchestrator
 
             Log.Information
             (
-                "Orchestrator 修正完成: 对话={SessionID}, 临时轮次={TempRoundID}, 审计通过={Passed}",
+                "Orchestrator 修正完成: 对话={SessionID}, 临时轮次={TempRoundID}",
                 sessionID,
-                tempRoundID,
-                context.AuditPassed
+                tempRoundID
             );
 
             return result;
@@ -432,37 +428,15 @@ public sealed class Orchestrator
 
         context.OnStageUpdate?.Invoke
         (
-            new PipelineStageUpdate(PipelineStageKind.Audit, PipelineStageStatus.Running)
+            new PipelineStageUpdate(PipelineStageKind.PostProcessing, PipelineStageStatus.Running)
         );
 
-        await auditStage.ExecuteAsync(context, cancellationToken);
+        await postProcessingStage.ExecuteAsync(context, cancellationToken);
 
         context.OnStageUpdate?.Invoke
         (
-            new PipelineStageUpdate
-            (
-                PipelineStageKind.Audit,
-                PipelineStageStatus.Complete,
-                context.AuditPassed ?
-                    "通过" :
-                    $"违规数={context.Violations.Count}"
-            )
+            new PipelineStageUpdate(PipelineStageKind.PostProcessing, PipelineStageStatus.Complete)
         );
-
-        if (context.AuditPassed)
-        {
-            context.OnStageUpdate?.Invoke
-            (
-                new PipelineStageUpdate(PipelineStageKind.PostProcessing, PipelineStageStatus.Running)
-            );
-
-            await postProcessingStage.ExecuteAsync(context, cancellationToken);
-
-            context.OnStageUpdate?.Invoke
-            (
-                new PipelineStageUpdate(PipelineStageKind.PostProcessing, PipelineStageStatus.Complete)
-            );
-        }
 
         context.OnStageUpdate?.Invoke
         (
@@ -490,9 +464,7 @@ public sealed class Orchestrator
         (
             context.NarrativeOutput ?? string.Empty,
             context.ThinkingOutput  ?? string.Empty,
-            context.RoundID,
-            context.Violations,
-            context.AuditPassed
+            context.RoundID
         );
     }
 

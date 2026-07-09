@@ -10,7 +10,6 @@ public static class BuiltInPrompts
         AgentTaskType.Knowledge    => KnowledgeAgentPrompt.SYSTEM,
         AgentTaskType.MemoryRecall => MemorySubAgentPrompt.RECALL,
         AgentTaskType.MemoryUpdate => MemorySubAgentPrompt.UPDATE,
-        AgentTaskType.Audit        => AuditAgentPrompt.SYSTEM,
         AgentTaskType.Scene        => SceneAgentPrompt.SYSTEM,
         _                          => throw new ArgumentOutOfRangeException(nameof(taskType))
     };

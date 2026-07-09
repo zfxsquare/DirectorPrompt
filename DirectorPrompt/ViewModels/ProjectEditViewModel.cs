@@ -43,8 +43,6 @@ public sealed partial class ProjectEditViewModel : ObservableObject
 
     public ObservableCollection<CharacterCategoryEditViewModel> CharacterCategories { get; } = [];
 
-    public AuditSettingViewModel Audit { get; } = new();
-
     public MemorySettingViewModel Memory { get; } = new();
 
     public KnowledgeSettingViewModel Knowledge { get; } = new();
@@ -80,7 +78,6 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         Description    = project.Description;
         OpeningMessage = project.OpeningMessage;
 
-        LoadAuditConfig(project.AuditConfig);
         LoadMemoryConfig(project.MemoryConfig);
         LoadKnowledgeConfig(project.KnowledgeConfig);
 
@@ -89,14 +86,6 @@ public sealed partial class ProjectEditViewModel : ObservableObject
 
         await LoadKnowledgeAsync();
         await LoadStateSystemAsync();
-    }
-
-    private void LoadAuditConfig(string json)
-    {
-        var config = JsonSerializer.Deserialize<AuditConfig>(json) ?? new AuditConfig();
-
-        Audit.Mode       = config.Mode;
-        Audit.MaxRetries = config.MaxRetries;
     }
 
     private void LoadMemoryConfig(string json)
@@ -116,17 +105,6 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         Knowledge.SemanticTopK = config.SemanticTopK;
         Knowledge.TokenBudget  = config.TokenBudget;
         Knowledge.MinRelevance = config.MinRelevance;
-    }
-
-    private string BuildAuditConfig()
-    {
-        var config = new AuditConfig
-        {
-            Mode       = Audit.Mode,
-            MaxRetries = Audit.MaxRetries
-        };
-
-        return JsonSerializer.Serialize(config);
     }
 
     private string BuildMemoryConfig()
@@ -392,7 +370,6 @@ public sealed partial class ProjectEditViewModel : ObservableObject
                 Name            = Name.Trim(),
                 Description     = Description,
                 OpeningMessage  = OpeningMessage,
-                AuditConfig     = BuildAuditConfig(),
                 MemoryConfig    = BuildMemoryConfig(),
                 KnowledgeConfig = BuildKnowledgeConfig()
             };

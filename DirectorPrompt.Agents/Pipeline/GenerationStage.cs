@@ -1,7 +1,6 @@
 using System.Text;
 using DirectorPrompt.Agents.Tools;
 using DirectorPrompt.Domain.Enums;
-using DirectorPrompt.Domain.Models;
 using Microsoft.Extensions.AI;
 using Serilog;
 
@@ -136,79 +135,6 @@ public sealed class GenerationStage
 
         if (!string.IsNullOrEmpty(thinking))
             Log.Debug("Narrator 思考内容:\n{Thinking}", thinking);
-    }
-
-    public async Task RetryWithFeedbackAsync
-    (
-        PipelineContext          context,
-        IReadOnlyList<Violation> violations,
-        CancellationToken        cancellationToken = default
-    )
-    {
-        var resolved = agentConfigResolver.Resolve(AgentTaskType.Narrator);
-
-        if (resolved is null)
-            throw new InvalidOperationException("未配置 Narrator Agent");
-
-        Log.Information
-        (
-            "GenerationStage 重试: 模型={Model}, 违规数={ViolationCount}",
-            resolved.ModelConfig.ModelName,
-            violations.Count
-        );
-
-        var client = chatClientFactory.Create(resolved.ProviderConfig, resolved.ModelConfig);
-        var tools  = knowledgeTools.Create(context.ToolContext);
-
-        var sb = new StringBuilder();
-        sb.AppendLine("## 上一次输出存在以下问题, 请修正后重新生成:");
-        sb.AppendLine();
-
-        foreach (var violation in violations)
-        {
-            sb.AppendLine($"- [{violation.Severity}] {violation.Description}");
-
-            if (!string.IsNullOrWhiteSpace(violation.Suggestion))
-                sb.AppendLine($"  建议: {violation.Suggestion}");
-        }
-
-        sb.AppendLine();
-        sb.AppendLine("## 原始输出:");
-        sb.AppendLine(context.NarrativeOutput);
-
-        var systemPrompt = BuildSystemPrompt(context, resolved.SystemPrompt);
-
-        var messages = BuildMessages(systemPrompt, resolved.ModelPrompt, context);
-
-        messages.Add(new ChatMessage(ChatRole.User,      BuildNarratorInput(context)));
-        messages.Add(new ChatMessage(ChatRole.Assistant, context.NarrativeOutput ?? string.Empty));
-        messages.Add(new ChatMessage(ChatRole.User,      sb.ToString()));
-
-        var options = new ChatOptions
-        {
-            Temperature = resolved.ModelConfig.Temperature,
-            ModelId     = resolved.ModelConfig.ModelName,
-            Tools       = [.. tools]
-        };
-
-        var response         = await client.GetResponseAsync(messages, options, cancellationToken);
-        var assistantMessage = response.Messages.LastOrDefault();
-
-        var apiReasoning = ExtractReasoning(assistantMessage);
-        var rawText      = assistantMessage?.Text ?? string.Empty;
-        var (thinking, narrative) = ThinkingParser.Merge(apiReasoning, rawText);
-
-        context.NarrativeOutput = narrative;
-        context.ThinkingOutput  = thinking;
-
-        Log.Information
-        (
-            "GenerationStage 重试完成: 叙事长度={NarrativeLen}, 思考长度={ThinkingLen}",
-            narrative.Length,
-            thinking.Length
-        );
-
-        Log.Information("Narrator 重试输出:\n{Narrative}", narrative);
     }
 
     private static List<ChatMessage> BuildMessages(string systemPrompt, string? modelPrompt, PipelineContext context)

@@ -42,9 +42,6 @@ public partial class ProjectEditWindow : FluentWindow
         CharacterPanel.Visibility = tag == "character" ?
                                         Visibility.Visible :
                                         Visibility.Collapsed;
-        AuditPanel.Visibility = tag == "audit" ?
-                                    Visibility.Visible :
-                                    Visibility.Collapsed;
         MemoryPanel.Visibility = tag == "memory" ?
                                      Visibility.Visible :
                                      Visibility.Collapsed;

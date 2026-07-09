@@ -493,23 +493,14 @@ public sealed partial class MainViewModel
 
             Log.Information
             (
-                "指令处理完成: 轮次={RoundID}, 审计通过={Passed}, 叙事长度={NarrativeLen}",
+                "指令处理完成: 轮次={RoundID}, 叙事长度={NarrativeLen}",
                 result.RoundID,
-                result.AuditPassed,
                 result.Narrative.Length
             );
 
-            if (result.Violations.Count > 0)
-            {
-                foreach (var v in result.Violations)
-                    Log.Warning("  违规: [{Severity}] {Description}", v.Severity, v.Description);
-            }
-
             await RefreshSidebarAsync();
 
-            StatusMessage = result.AuditPassed ?
-                                Loc.Get("Status.Complete") :
-                                Loc.Get("Status.CompleteWithWarnings", result.Violations.Count);
+            StatusMessage = Loc.Get("Status.Complete");
 
             void StreamingUpdate(string narrative, string thinking) =>
                 dispatcher.BeginInvoke(new Action(() =>
@@ -672,9 +663,7 @@ public sealed partial class MainViewModel
 
             await RefreshSidebarAsync();
 
-            StatusMessage = result.AuditPassed ?
-                                Loc.Get("Status.Complete") :
-                                Loc.Get("Status.CompleteWithWarnings", result.Violations.Count);
+            StatusMessage = Loc.Get("Status.Complete");
 
             void StreamingUpdate(string narrative, string thinking) =>
                 dispatcher.BeginInvoke(new Action(() =>
@@ -1468,7 +1457,6 @@ public sealed class PipelineStageViewModel : INotifyPropertyChanged
             PipelineStageKind.DirectiveProcessing => "Pipeline.Stage.DirectiveProcessing",
             PipelineStageKind.Retrieval           => "Pipeline.Stage.Retrieval",
             PipelineStageKind.Generation          => "Pipeline.Stage.Generation",
-            PipelineStageKind.Audit               => "Pipeline.Stage.Audit",
             PipelineStageKind.PostProcessing      => "Pipeline.Stage.PostProcessing",
             _                                     => Kind.ToString()
         }

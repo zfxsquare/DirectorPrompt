@@ -120,7 +120,6 @@ public static class UserSettingsExtension
                 "Narrator"  => AgentTaskType.Narrator,
                 "Knowledge" => AgentTaskType.Knowledge,
                 "Memory"    => AgentTaskType.MemoryRecall,
-                "Audit"     => AgentTaskType.Audit,
                 "Scene"     => AgentTaskType.Scene,
                 "State"     => AgentTaskType.MemoryUpdate,
                 _           => AgentTaskType.Narrator

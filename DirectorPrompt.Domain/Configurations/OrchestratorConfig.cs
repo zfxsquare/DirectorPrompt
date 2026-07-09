@@ -10,8 +10,6 @@ public record OrchestratorConfig
 
     public List<AgentTaskConfig> AgentTasks { get; set; } = [];
 
-    public AuditConfig AuditConfig { get; init; } = new();
-
     public MemoryConfig MemoryConfig { get; init; } = new();
 
     public KnowledgeRetrievalConfig KnowledgeConfig { get; init; } = new();

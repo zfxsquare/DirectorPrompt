@@ -47,8 +47,8 @@ public sealed class ProjectRepository : IProjectRepository
         var id = await connection.ExecuteScalarAsync<long>
                  (
                      """
-                     INSERT INTO projects (name, description, opening_message, audit_config, memory_config, knowledge_config, created_at, updated_at)
-                     VALUES (@name, @description, @openingMessage, @auditConfig, @memoryConfig, @knowledgeConfig, @createdAt, @updatedAt);
+                     INSERT INTO projects (name, description, opening_message, memory_config, knowledge_config, created_at, updated_at)
+                     VALUES (@name, @description, @openingMessage, @memoryConfig, @knowledgeConfig, @createdAt, @updatedAt);
                      SELECT last_insert_rowid();
                      """,
                      new
@@ -56,7 +56,6 @@ public sealed class ProjectRepository : IProjectRepository
                          name            = project.Name,
                          description     = project.Description,
                          openingMessage  = project.OpeningMessage,
-                         auditConfig     = project.AuditConfig,
                          memoryConfig    = project.MemoryConfig,
                          knowledgeConfig = project.KnowledgeConfig,
                          createdAt       = now,
@@ -78,7 +77,6 @@ public sealed class ProjectRepository : IProjectRepository
             SET name = @name,
                 description = @description,
                 opening_message = @openingMessage,
-                audit_config = @auditConfig,
                 memory_config = @memoryConfig,
                 knowledge_config = @knowledgeConfig,
                 updated_at = @updatedAt
@@ -90,7 +88,6 @@ public sealed class ProjectRepository : IProjectRepository
                 name            = project.Name,
                 description     = project.Description,
                 openingMessage  = project.OpeningMessage,
-                auditConfig     = project.AuditConfig,
                 memoryConfig    = project.MemoryConfig,
                 knowledgeConfig = project.KnowledgeConfig,
                 updatedAt       = DateTime.UtcNow.ToString("O")
@@ -204,8 +201,6 @@ public sealed class ProjectRepository : IProjectRepository
 
         public string Opening_Message { get; set; } = string.Empty;
 
-        public string Audit_Config { get; set; } = "{}";
-
         public string Memory_Config { get; set; } = "{}";
 
         public string Knowledge_Config { get; set; } = "{}";
@@ -221,7 +216,6 @@ public sealed class ProjectRepository : IProjectRepository
                 Name            = Name,
                 Description     = Description,
                 OpeningMessage  = Opening_Message,
-                AuditConfig     = Audit_Config,
                 MemoryConfig    = Memory_Config,
                 KnowledgeConfig = Knowledge_Config,
                 CreatedAt       = DateTime.Parse(Created_At),

@@ -5,7 +5,6 @@ public enum PipelineStageKind
     DirectiveProcessing,
     Retrieval,
     Generation,
-    Audit,
     PostProcessing,
     SystemState
 }

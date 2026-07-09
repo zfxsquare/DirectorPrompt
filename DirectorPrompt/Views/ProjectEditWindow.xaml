@@ -156,7 +156,7 @@
                                            VerticalAlignment="Center" />
                                 <ui:Button Grid.Column="1"
                                            Content="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}"
-                                           Icon="Add24"
+                                           Icon="{ui:SymbolIcon Symbol=Add24}"
                                            Command="{Binding AddKnowledgeGroupCommand}" />
                             </Grid>
 
@@ -180,14 +180,14 @@
                                                         <ui:Button
                                                             Content="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}"
                                                             Appearance="Secondary"
-                                                            Icon="Add24"
+                                                            Icon="{ui:SymbolIcon Symbol=Add24}"
                                                             Padding="6,4"
                                                             Margin="0,0,4,0"
                                                             Command="{Binding DataContext.AddKnowledgeEntryCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
                                                             CommandParameter="{Binding}" />
                                                         <ui:Button Content="删除"
                                                                    Appearance="Caution"
-                                                                   Icon="Delete24"
+                                                                   Icon="{ui:SymbolIcon Symbol=Delete24}"
                                                                    Padding="6,4"
                                                                    Click="OnDeleteKnowledgeGroup"
                                                                    Tag="{Binding}" />
@@ -311,7 +311,7 @@
                                            VerticalAlignment="Center" />
                                 <ui:Button Grid.Column="1"
                                            Content="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}"
-                                           Icon="Add24"
+                                           Icon="{ui:SymbolIcon Symbol=Add24}"
                                            Appearance="Primary"
                                            Command="{Binding AddStateAttributeCommand}" />
                             </Grid>
@@ -507,7 +507,7 @@
                                 </StackPanel>
                                 <ui:Button Grid.Column="1"
                                            Content="{Binding [Character.Category.Add], Source={x:Static loc:Loc.Instance}}"
-                                           Icon="Add24"
+                                           Icon="{ui:SymbolIcon Symbol=Add24}"
                                            Appearance="Primary"
                                            VerticalAlignment="Center"
                                            Command="{Binding AddCharacterCategoryCommand}" />
@@ -771,7 +771,7 @@
 
                                                 <ui:Button
                                                     Content="{Binding [Character.Category.AddAttribute], Source={x:Static loc:Loc.Instance}}"
-                                                    Icon="Add24"
+                                                    Icon="{ui:SymbolIcon Symbol=Add24}"
                                                     Appearance="Secondary"
                                                     Padding="8,4"
                                                     Margin="0,4,0,0"

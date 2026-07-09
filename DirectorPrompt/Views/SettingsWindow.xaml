@@ -117,7 +117,7 @@
                                 </StackPanel>
                                 <ui:Button Grid.Column="1"
                                            Content="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}"
-                                           Icon="Add24"
+                                           Icon="{ui:SymbolIcon Symbol=Add24}"
                                            Appearance="Primary"
                                            VerticalAlignment="Center"
                                            Command="{Binding AddProviderCommand}" />
@@ -145,7 +145,7 @@
                                                     <ui:Button Grid.Column="1"
                                                                Content="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}"
                                                                Appearance="Caution"
-                                                               Icon="Delete24"
+                                                               Icon="{ui:SymbolIcon Symbol=Delete24}"
                                                                Padding="6,4"
                                                                Margin="0,0,8,0"
                                                                Click="OnRemoveProvider"
@@ -225,7 +225,7 @@
                                 </StackPanel>
                                 <ui:Button Grid.Column="1"
                                            Content="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}"
-                                           Icon="Add24"
+                                           Icon="{ui:SymbolIcon Symbol=Add24}"
                                            Appearance="Primary"
                                            VerticalAlignment="Center"
                                            Command="{Binding AddModelCommand}" />
@@ -253,7 +253,7 @@
                                                     <ui:Button Grid.Column="1"
                                                                Content="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}"
                                                                Appearance="Caution"
-                                                               Icon="Delete24"
+                                                               Icon="{ui:SymbolIcon Symbol=Delete24}"
                                                                Padding="6,4"
                                                                Margin="0,0,8,0"
                                                                Click="OnRemoveModel"
@@ -303,7 +303,7 @@
                                                                                    Text="{Binding ModelName, UpdateSourceTrigger=PropertyChanged}" />
                                                     <ui:Button Grid.Column="2"
                                                                Content="{Binding [Settings.Agent.FetchModels], Source={x:Static loc:Loc.Instance}}"
-                                                               Icon="ArrowDownload24"
+                                                               Icon="{ui:SymbolIcon Symbol=ArrowDownload24}"
                                                                Appearance="Secondary"
                                                                Padding="6,4"
                                                                Margin="8,0,0,0"
@@ -390,7 +390,7 @@
                                                     </Grid.ColumnDefinitions>
                                                     <ui:Button Grid.Column="1"
                                                                Content="{Binding [Settings.Agent.TestConnection], Source={x:Static loc:Loc.Instance}}"
-                                                               Icon="PlugConnected24"
+                                                               Icon="{ui:SymbolIcon Symbol=PlugConnected24}"
                                                                Appearance="Secondary"
                                                                Padding="8,4"
                                                                Command="{Binding DataContext.TestModelConnectionCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
@@ -443,7 +443,7 @@
                                 </StackPanel>
                                 <ui:Button Grid.Column="1"
                                            Content="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}"
-                                           Icon="Add24"
+                                           Icon="{ui:SymbolIcon Symbol=Add24}"
                                            Appearance="Primary"
                                            VerticalAlignment="Center"
                                            Command="{Binding AddPromptCommand}" />
@@ -466,7 +466,7 @@
                                                     <ui:Button Grid.Column="1"
                                                                Content="{Binding [Common.Remove], Source={x:Static loc:Loc.Instance}}"
                                                                Appearance="Caution"
-                                                               Icon="Delete24"
+                                                               Icon="{ui:SymbolIcon Symbol=Delete24}"
                                                                Padding="6,4"
                                                                Margin="0,0,8,0"
                                                                Click="OnRemovePrompt"
@@ -613,7 +613,7 @@
                                                                Text="{Binding Embedding.ModelName, UpdateSourceTrigger=PropertyChanged}" />
                                 <ui:Button Grid.Column="2"
                                            Content="{Binding [Settings.Agent.FetchModels], Source={x:Static loc:Loc.Instance}}"
-                                           Icon="ArrowDownload24"
+                                           Icon="{ui:SymbolIcon Symbol=ArrowDownload24}"
                                            Appearance="Secondary"
                                            Margin="8,0,0,0"
                                            Command="{Binding FetchEmbeddingModelsCommand}"
@@ -633,7 +633,7 @@
                                 </Grid.ColumnDefinitions>
                                 <ui:Button Grid.Column="0"
                                            Content="{Binding [Settings.Agent.TestConnection], Source={x:Static loc:Loc.Instance}}"
-                                           Icon="PlugConnected24"
+                                           Icon="{ui:SymbolIcon Symbol=PlugConnected24}"
                                            Appearance="Secondary"
                                            Command="{Binding TestEmbeddingConnectionCommand}"
                                            IsEnabled="{Binding Embedding.IsTestingConnection, Converter={StaticResource InverseBool}}" />

@@ -156,7 +156,7 @@
 
                 <ui:Button Grid.Column="2"
                            Content="{Binding [Navigation.Settings], Source={x:Static loc:Loc.Instance}}"
-                           Icon="Settings24"
+                           Icon="{ui:SymbolIcon Symbol=Settings24}"
                            Appearance="Secondary"
                            Padding="12,6"
                            Command="{Binding OpenSettingsCommand}" />
@@ -184,7 +184,7 @@
 
                     <ui:Button Grid.Row="0"
                                Content="{Binding [Navigation.NewSession], Source={x:Static loc:Loc.Instance}}"
-                               Icon="Add24"
+                               Icon="{ui:SymbolIcon Symbol=Add24}"
                                Appearance="Primary"
                                Command="{Binding NewSessionCommand}"
                                IsEnabled="{Binding IsProjectSelected}"
@@ -440,7 +440,7 @@
                                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                                     <ui:Button
                                                         Content="{Binding [Common.Save], Source={x:Static loc:Loc.Instance}}"
-                                                        Icon="Save24"
+                                                        Icon="{ui:SymbolIcon Symbol=Save24}"
                                                         Appearance="Primary"
                                                         Padding="12,6"
                                                         Margin="0,0,4,0"
@@ -448,7 +448,7 @@
                                                         CommandParameter="{Binding}" />
                                                     <ui:Button
                                                         Content="{Binding [Common.Cancel], Source={x:Static loc:Loc.Instance}}"
-                                                        Icon="Dismiss24"
+                                                        Icon="{ui:SymbolIcon Symbol=Dismiss24}"
                                                         Appearance="Secondary"
                                                         Padding="12,6"
                                                         Command="{Binding DataContext.CancelEditCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
@@ -898,7 +898,7 @@
                                                                             Margin="0,4,0,0">
                                                                         <ui:Button
                                                                             Content="{Binding [Common.Save], Source={x:Static loc:Loc.Instance}}"
-                                                                            Icon="Save24"
+                                                                            Icon="{ui:SymbolIcon Symbol=Save24}"
                                                                             Appearance="Primary"
                                                                             Padding="12,6"
                                                                             Margin="0,0,4,0"
@@ -906,7 +906,7 @@
                                                                             CommandParameter="{Binding}" />
                                                                         <ui:Button
                                                                             Content="{Binding [Common.Cancel], Source={x:Static loc:Loc.Instance}}"
-                                                                            Icon="Dismiss24"
+                                                                            Icon="{ui:SymbolIcon Symbol=Dismiss24}"
                                                                             Appearance="Secondary"
                                                                             Padding="12,6"
                                                                             Command="{Binding DataContext.CancelMemoryEditCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"

@@ -118,8 +118,8 @@
             <StackPanel Orientation="Horizontal"
                         HorizontalAlignment="Right"
                         Margin="0,4,0,0">
-                <ui:Button Content="{Binding [Common.AddDirective], Source={x:Static loc:Loc.Instance}}"
-                           Icon="Add24"
+                <ui:Button Content="{Binding [Common.Add], Source={x:Static loc:Loc.Instance}}"
+                           Icon="{ui:SymbolIcon Symbol=Add24}"
                            Width="150"
                            Margin="0,0,4,0"
                            Padding="12,6"
@@ -129,7 +129,7 @@
                         Background="{DynamicResource ControlElevationBorderBrush}"
                         Visibility="{Binding ShowSendButton, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}" />
                 <ui:Button Content="{Binding [Dialog.SendDirective], Source={x:Static loc:Loc.Instance}}"
-                           Icon="Send24"
+                           Icon="{ui:SymbolIcon Symbol=Send24}"
                            Width="150"
                            Appearance="Primary"
                            Margin="4,0,0,0"

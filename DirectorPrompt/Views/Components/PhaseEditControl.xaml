@@ -114,7 +114,7 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
         <ui:Button Content="{Binding [State.Attribute.AddPhase], Source={x:Static loc:Loc.Instance}}"
-                   Icon="Add24"
+                   Icon="{ui:SymbolIcon Symbol=Add24}"
                    Appearance="Secondary"
                    Padding="8,4"
                    Margin="0,4,0,0"

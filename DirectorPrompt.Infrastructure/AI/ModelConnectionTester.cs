@@ -1,6 +1,8 @@
 using System.ClientModel;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using Anthropic;
+using Anthropic.Core;
 using DirectorPrompt.Domain.Services;
 using Microsoft.Extensions.AI;
 using OpenAI;
@@ -133,18 +135,28 @@ public sealed class ModelConnectionTester : IModelConnectionTester
         if (string.IsNullOrWhiteSpace(apiKey))
             throw new ArgumentException("Anthropic Provider 需要 API Key");
 
+        var options = new ClientOptions
+        {
+            ApiKey  = apiKey,
+            BaseUrl = string.IsNullOrWhiteSpace(endpoint) ? null : endpoint
+        };
+
         var parsedHeaders = CustomHeaderPipelinePolicy.Parse(customHeaders);
 
-        using var client = new AnthropicChatClient(apiKey, modelName, endpoint, parsedHeaders);
+        if (parsedHeaders is not null)
+            options.ExtraHeaders = parsedHeaders;
+
+        using var anthropicClient = new AnthropicClient(options);
+        using var chatClient      = anthropicClient.AsIChatClient(modelName, 16);
 
         var messages = new List<ChatMessage>
         {
             new(ChatRole.User, "连接测试，回复任一字符即可")
         };
 
-        var options = new ChatOptions { MaxOutputTokens = 16 };
+        var chatOptions = new ChatOptions { MaxOutputTokens = 16 };
 
-        var response = await client.GetResponseAsync(messages, options, cancellationToken);
+        var response = await chatClient.GetResponseAsync(messages, chatOptions, cancellationToken);
 
         if (response.Messages.Count == 0)
             throw new InvalidOperationException("模型返回了空响应");

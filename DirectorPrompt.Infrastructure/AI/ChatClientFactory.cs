@@ -1,6 +1,8 @@
 using System.ClientModel;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using Anthropic;
+using Anthropic.Core;
 using DirectorPrompt.Agents;
 using DirectorPrompt.Domain.Configurations;
 using Microsoft.Extensions.AI;
@@ -73,15 +75,19 @@ public sealed class ChatClientFactory : IChatClientFactory
         if (string.IsNullOrWhiteSpace(provider.APIKey))
             throw new ArgumentException("Anthropic Provider 需要 API Key");
 
+        var options = new ClientOptions
+        {
+            ApiKey    = provider.APIKey,
+            BaseUrl   = string.IsNullOrWhiteSpace(provider.Endpoint) ? null : provider.Endpoint
+        };
+
         var customHeaders = CustomHeaderPipelinePolicy.Parse(provider.CustomHeaders);
 
-        return new AnthropicChatClient
-        (
-            provider.APIKey,
-            model.ModelName,
-            provider.Endpoint,
-            customHeaders
-        );
+        if (customHeaders is not null)
+            options.ExtraHeaders = customHeaders;
+
+        return new AnthropicClient(options)
+               .AsIChatClient(model.ModelName, 8192);
     }
 }
 
@@ -148,8 +154,15 @@ public sealed class ModelOptionsChatClient
 
         if (modelConfig.ReasoningEffort != ReasoningEffort.None)
         {
-            options.AdditionalProperties                     ??= [];
-            options.AdditionalProperties["reasoning_effort"] =   modelConfig.ReasoningEffort.ToString().ToLowerInvariant();
+            options.Reasoning ??= new ReasoningOptions();
+
+            options.Reasoning.Effort = modelConfig.ReasoningEffort switch
+            {
+                ReasoningEffort.Low    => Microsoft.Extensions.AI.ReasoningEffort.Low,
+                ReasoningEffort.Medium => Microsoft.Extensions.AI.ReasoningEffort.Medium,
+                ReasoningEffort.High   => Microsoft.Extensions.AI.ReasoningEffort.High,
+                _                      => null
+            };
         }
 
         return options;

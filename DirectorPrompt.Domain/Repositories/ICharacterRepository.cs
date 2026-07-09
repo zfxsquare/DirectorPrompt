@@ -11,8 +11,6 @@ public interface ICharacterRepository
 
     Task<IReadOnlyList<Character>> GetBySessionAsync(long sessionID, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<Character>> GetByProjectAsync(long projectID, CancellationToken cancellationToken = default);
-
     Task<IReadOnlyList<Character>> GetBySceneAsync(long sceneID, CancellationToken cancellationToken = default);
 
     Task<Character> CreateAsync(Character character, CancellationToken cancellationToken = default);
@@ -28,8 +26,6 @@ public interface ICharacterRepository
     Task UpdateCategoryAsync(CharacterCategory category, CancellationToken cancellationToken = default);
 
     Task DeleteCategoryAsync(long categoryID, CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<Character>> GetCharactersByCategoryAsync(long projectID, long categoryID, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<CharacterRelation>> GetRelationsAsync(long sessionID, CancellationToken cancellationToken = default);
 
@@ -65,5 +61,4 @@ public interface ICharacterRepository
 
     Task SetCharacterStateValueAsync(long characterID, long attributeID, string value, CancellationToken cancellationToken = default);
 
-    Task CloneProjectCharactersToSessionAsync(long projectID, long sessionID, CancellationToken cancellationToken = default);
 }

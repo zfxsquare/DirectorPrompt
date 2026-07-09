@@ -57,19 +57,6 @@ public sealed class CharacterRepository : ICharacterRepository
         return rows.Select(r => r.ToCharacter()).ToList();
     }
 
-    public async Task<IReadOnlyList<Character>> GetByProjectAsync(long projectID, CancellationToken cancellationToken = default)
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        var rows = await connection.QueryAsync<CharacterRow>
-                   (
-                       "SELECT * FROM characters WHERE project_id = @projectID ORDER BY id",
-                       new { projectID }
-                   );
-
-        return rows.Select(r => r.ToCharacter()).ToList();
-    }
-
     public async Task<IReadOnlyList<Character>> GetBySceneAsync(long sceneID, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
@@ -250,31 +237,6 @@ public sealed class CharacterRepository : ICharacterRepository
             "DELETE FROM character_categories WHERE id = @categoryID",
             new { categoryID }
         );
-    }
-
-    public async Task<IReadOnlyList<Character>> GetCharactersByCategoryAsync
-    (
-        long              projectID,
-        long              categoryID,
-        CancellationToken cancellationToken = default
-    )
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        var rows = await connection.QueryAsync<CharacterRow>
-                   (
-                       """
-                       SELECT * FROM characters
-                       WHERE project_id = @projectID
-                         AND EXISTS (
-                           SELECT 1 FROM json_each(category_ids) WHERE value = @categoryID
-                         )
-                       ORDER BY id
-                       """,
-                       new { projectID, categoryID }
-                   );
-
-        return rows.Select(r => r.ToCharacter()).ToList();
     }
 
     public async Task<IReadOnlyList<CharacterRelation>> GetRelationsAsync(long sessionID, CancellationToken cancellationToken = default)
@@ -649,34 +611,11 @@ public sealed class CharacterRepository : ICharacterRepository
             await roundChangeRepository.RecordUpdateAsync(roundID, "character_state_values", 0, JsonSerializer.Serialize(oldRow), cancellationToken);
     }
 
-    public async Task CloneProjectCharactersToSessionAsync
-    (
-        long              projectID,
-        long              sessionID,
-        CancellationToken cancellationToken = default
-    )
-    {
-        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
-
-        var now = DateTime.UtcNow.ToString("O");
-
-        await connection.ExecuteAsync
-        (
-            """
-            INSERT INTO characters (project_id, session_id, name, description, category_ids, status, created_at, updated_at)
-            SELECT project_id, @sessionID, name, description, category_ids, status, @now, @now
-            FROM characters
-            WHERE project_id = @projectID AND session_id IS NULL
-            """,
-            new { projectID, sessionID, now }
-        );
-    }
-
     private sealed class CharacterRow
     {
         public long   ID           { get; set; }
         public long   Project_ID   { get; set; }
-        public long?  Session_ID   { get; set; }
+        public long   Session_ID   { get; set; }
         public string Name         { get; set; } = string.Empty;
         public string Description  { get; set; } = string.Empty;
         public string Category_IDs { get; set; } = "[]";
@@ -689,7 +628,7 @@ public sealed class CharacterRepository : ICharacterRepository
             {
                 ID          = ID,
                 ProjectID   = Project_ID,
-                SessionID   = Session_ID ?? 0,
+                SessionID   = Session_ID,
                 Name        = Name,
                 Description = Description,
                 CategoryIDs = JsonHelper.DeserializeInt64Array(Category_IDs),
@@ -727,7 +666,7 @@ public sealed class CharacterRepository : ICharacterRepository
     {
         public long    ID                  { get; set; }
         public long    Project_ID          { get; set; }
-        public long?   Session_ID          { get; set; }
+        public long    Session_ID          { get; set; }
         public long    Source_Character_ID { get; set; }
         public long    Target_Character_ID { get; set; }
         public string  Relation_Type       { get; set; } = string.Empty;
@@ -741,7 +680,7 @@ public sealed class CharacterRepository : ICharacterRepository
             {
                 ID                = ID,
                 ProjectID         = Project_ID,
-                SessionID         = Session_ID ?? 0,
+                SessionID         = Session_ID,
                 SourceCharacterID = Source_Character_ID,
                 TargetCharacterID = Target_Character_ID,
                 RelationType      = Relation_Type,

@@ -67,20 +67,6 @@ public sealed class CharacterCategoryResolver
         return resolution;
     }
 
-    public async Task RebuildForProjectAsync
-    (
-        long              projectID,
-        CancellationToken cancellationToken = default
-    )
-    {
-        var characters = await characterRepository.GetByProjectAsync(projectID, cancellationToken);
-
-        foreach (var character in characters)
-            await ResolveAndPersistAsync(character.ID, cancellationToken);
-
-        Log.Information("批量重建分类解析: projectID={ProjectID}, 人物数={Count}", projectID, characters.Count);
-    }
-
     private static (long[] CategoryIDs, Dictionary<long, int> DepthMap) ExpandCategoriesWithDepth
     (
         long[]                           directCategoryIDs,

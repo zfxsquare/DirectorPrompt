@@ -40,7 +40,6 @@ public sealed class ProjectPortService
         var groups      = await QueryKnowledgeGroupsAsync(connection, projectID, cancellationToken);
         var entries     = await QueryKnowledgeEntriesAsync(connection, projectID, cancellationToken);
         var entityIndex = await QueryKnowledgeEntityIndexAsync(connection, projectID, cancellationToken);
-        var characters  = await QueryProjectCharactersAsync(connection, projectID, cancellationToken);
 
         var packageData = new ProjectPackageData
         {
@@ -49,8 +48,7 @@ public sealed class ProjectPortService
             StateAttributes      = attributes,
             KnowledgeGroups      = groups,
             KnowledgeEntries     = entries.Select(e => e with { ContentHash = null }).ToList(),
-            KnowledgeEntityIndex = entityIndex,
-            ProjectCharacters    = characters
+            KnowledgeEntityIndex = entityIndex
         };
 
         var manifest = new PackageManifest
@@ -171,16 +169,6 @@ public sealed class ProjectPortService
                 cancellationToken
             );
 
-            await InsertProjectCharactersAsync
-            (
-                connection,
-                transaction,
-                data.ProjectCharacters ?? [],
-                newProjectID,
-                categoryIDMap,
-                cancellationToken
-            );
-
             await transaction.CommitAsync(cancellationToken);
 
             return new ProjectImportResult
@@ -188,8 +176,7 @@ public sealed class ProjectPortService
                 ProjectID           = newProjectID,
                 ProjectName         = data.Project.Name,
                 KnowledgeEntryCount = data.KnowledgeEntries?.Count  ?? 0,
-                StateAttributeCount = data.StateAttributes?.Count   ?? 0,
-                CharacterCount      = data.ProjectCharacters?.Count ?? 0
+                StateAttributeCount = data.StateAttributes?.Count   ?? 0
             };
         }
         catch
@@ -305,22 +292,6 @@ public sealed class ProjectPortService
                        }
                    )
                    .ToList();
-    }
-
-    private static async Task<List<Character>> QueryProjectCharactersAsync
-    (
-        SqliteConnection  connection,
-        long              projectID,
-        CancellationToken cancellationToken
-    )
-    {
-        var rows = await connection.QueryAsync<CharacterRow>
-                   (
-                       "SELECT * FROM characters WHERE project_id = @projectID AND session_id IS NULL ORDER BY id",
-                       new { projectID }
-                   );
-
-        return rows.Select(r => r.ToCharacter()).ToList();
     }
 
     private static async Task<long> InsertProjectAsync
@@ -577,41 +548,6 @@ public sealed class ProjectPortService
         }
     }
 
-    private static async Task InsertProjectCharactersAsync
-    (
-        SqliteConnection       connection,
-        SqliteTransaction      transaction,
-        List<Character>        characters,
-        long                   newProjectID,
-        Dictionary<long, long> categoryIDMap,
-        CancellationToken      cancellationToken
-    )
-    {
-        foreach (var character in characters)
-        {
-            var mappedCategoryIDs = RemapIDs(character.CategoryIDs, categoryIDMap);
-
-            await connection.ExecuteAsync
-            (
-                """
-                INSERT INTO characters (project_id, session_id, name, description, category_ids, status, created_at, updated_at)
-                VALUES (@projectID, NULL, @name, @description, @categoryIDs, @status, @createdAt, @updatedAt)
-                """,
-                new
-                {
-                    projectID   = newProjectID,
-                    name        = character.Name,
-                    description = character.Description,
-                    categoryIDs = JsonHelper.Serialize(mappedCategoryIDs),
-                    status      = character.Status.ToString().ToLowerInvariant(),
-                    createdAt   = character.CreatedAt.ToString("O"),
-                    updatedAt   = character.UpdatedAt.ToString("O")
-                },
-                transaction
-            );
-        }
-    }
-
     private static long[] RemapIDs(long[] ids, Dictionary<long, long> idMap)
     {
         var result = new long[ids.Length];
@@ -648,8 +584,6 @@ public sealed class ProjectPortService
         public List<KnowledgeEntry> KnowledgeEntries { get; set; } = [];
 
         public List<KnowledgeEntityIndex> KnowledgeEntityIndex { get; set; } = [];
-
-        public List<Character> ProjectCharacters { get; set; } = [];
     }
 
     private sealed class ProjectRow
@@ -817,43 +751,4 @@ public sealed class ProjectPortService
             };
     }
 
-    private sealed class CharacterRow
-    {
-        public long ID { get; set; }
-
-        public long Project_ID { get; set; }
-
-        public long? Session_ID { get; set; }
-
-        public string Name { get; set; } = string.Empty;
-
-        public string Description { get; set; } = string.Empty;
-
-        public string Category_IDs { get; set; } = "[]";
-
-        public string Status { get; set; } = "active";
-
-        public string Created_At { get; set; } = string.Empty;
-
-        public string Updated_At { get; set; } = string.Empty;
-
-        public Character ToCharacter() =>
-            new()
-            {
-                ID          = ID,
-                ProjectID   = Project_ID,
-                SessionID   = Session_ID ?? 0,
-                Name        = Name,
-                Description = Description,
-                CategoryIDs = JsonHelper.DeserializeInt64Array(Category_IDs),
-                Status = Status switch
-                {
-                    "left" => CharacterStatus.Left,
-                    "dead" => CharacterStatus.Dead,
-                    _      => CharacterStatus.Active
-                },
-                CreatedAt = DateTime.Parse(Created_At),
-                UpdatedAt = DateTime.Parse(Updated_At)
-            };
-    }
 }

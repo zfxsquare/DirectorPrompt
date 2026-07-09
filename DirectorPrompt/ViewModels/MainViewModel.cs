@@ -32,7 +32,6 @@ public sealed partial class MainViewModel
     IMemoryRepository          memoryRepository,
     IServiceProvider           serviceProvider,
     UserSettings               userSettings,
-    ICharacterCategoryResolver categoryResolver,
     IProjectPortService        projectPortService
 )
     : ObservableObject
@@ -159,13 +158,6 @@ public sealed partial class MainViewModel
                                   UpdatedAt = now
                               }
                           );
-
-            await characterRepository.CloneProjectCharactersToSessionAsync(CurrentProject.ID, session.ID);
-
-            var clonedCharacters = await characterRepository.GetBySessionAsync(session.ID);
-
-            foreach (var c in clonedCharacters)
-                await categoryResolver.ResolveAndPersistAsync(c.ID);
 
             Log.Information("创建对话: ID={SessionID}, 项目={ProjectID}", session.ID, CurrentProject.ID);
 
@@ -306,12 +298,11 @@ public sealed partial class MainViewModel
 
             Log.Information
             (
-                "导入项目: ID={ProjectID}, 名称={Name}, 知识={Knowledge}, 属性={State}, 人物={Character}",
+                "导入项目: ID={ProjectID}, 名称={Name}, 知识={Knowledge}, 属性={State}",
                 result.ProjectID,
                 result.ProjectName,
                 result.KnowledgeEntryCount,
-                result.StateAttributeCount,
-                result.CharacterCount
+                result.StateAttributeCount
             );
 
             await LoadProjectsAsync();

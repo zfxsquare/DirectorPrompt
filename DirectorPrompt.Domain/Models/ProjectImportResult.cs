@@ -10,7 +10,5 @@ public record ProjectImportResult
 
     public int StateAttributeCount { get; init; }
 
-    public int CharacterCount { get; init; }
-
     public List<string> Warnings { get; init; } = [];
 }

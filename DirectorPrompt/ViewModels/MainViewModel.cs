@@ -612,7 +612,6 @@ public sealed partial class MainViewModel
 
             await RefreshSidebarAsync();
 
-            DirectiveInput.Clear();
             StatusMessage = result.AuditPassed ?
                                 Loc.Get("Status.Complete") :
                                 Loc.Get("Status.CompleteWithWarnings", result.Violations.Count);
@@ -803,16 +802,16 @@ public sealed partial class MainViewModel
     partial void OnCurrentSessionChanged(Session? value)
     {
         Dialog.Clear();
+        DirectiveInput.Clear();
+        ResetPipelineStages();
         _ = SaveSessionStateAsync();
 
         if (value is null)
         {
-            DirectiveInput.Clear();
             StatePanel.Clear();
             DirectivesPanel.Clear();
             CharacterPanel.Clear();
             MemoryPanel.Clear();
-            ResetPipelineStages();
             return;
         }
 

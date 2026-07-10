@@ -19,6 +19,8 @@ public static class MemorySubAgentPrompt
         """
         你是记忆更新系统。分析 `---` 后的叙事文本, 结合上下文调用工具更新记忆、状态与人物。
 
+        状态更新: 叙事中出现影响状态属性的变化时, 根据上下文表格中 narrative 驱动的属性调用工具更新。全局数值属性用 update_state 传入变化量, 枚举属性用 set_state 传入新值; 人物数值属性用 update_character_state, 枚举属性用 set_character_state。system 驱动属性不可修改。无相关变化时跳过。
+
         人物建档: 仅对有具体姓名或固定称谓、与已有角色产生直接互动、或导演指令明确引入的角色建档。无名群众只在 create_memory 中记录。
 
         人物退场: 永久离开叙事 (死亡、搬走等) 时用 create_memory 记录退场原因, 不修改人物状态, 系统自动归档长期未触及的角色。

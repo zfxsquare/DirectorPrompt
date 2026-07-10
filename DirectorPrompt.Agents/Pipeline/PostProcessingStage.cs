@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using DirectorPrompt.Agents.Tools;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Repositories;
@@ -96,13 +97,20 @@ public sealed class PostProcessingStage
         if (attributes.Count > 0)
         {
             sb.AppendLine("## 可用状态属性 (调用工具时使用 Name 字段的值)");
-            sb.AppendLine("| Name | 显示名 | 当前值 | 类型 |");
-            sb.AppendLine("|------|--------|--------|------|");
+            sb.AppendLine("| Name | 显示名 | 当前值 | 类型 | 驱动 |");
+            sb.AppendLine("|------|--------|--------|------|------|");
 
             foreach (var attr in attributes)
             {
-                var value = await stateRepository.GetStateValueAsync(attr.ID, context.SessionID, cancellationToken);
-                sb.AppendLine($"| {attr.Name} | {attr.DisplayName} | {value?.Value ?? "未设置"} | {attr.ValueType} |");
+                var value  = await stateRepository.GetStateValueAsync(attr.ID, context.SessionID, cancellationToken);
+                var type   = attr.ValueType == StateValueType.Enum ?
+                                 $"Enum({FormatEnumOptions(attr.Config)})" :
+                                 attr.ValueType.ToString();
+                var driver = attr.Driver == Driver.System ?
+                                 "system (不可修改)" :
+                                 "narrative";
+
+                sb.AppendLine($"| {attr.Name} | {attr.DisplayName} | {value?.Value ?? "未设置"} | {type} | {driver} |");
             }
 
             sb.AppendLine();
@@ -148,10 +156,14 @@ public sealed class PostProcessingStage
 
             foreach (var attr in categoryAttrs)
             {
+                var type   = attr.ValueType == StateValueType.Enum ?
+                                 $"Enum({FormatEnumOptions(attr.Config)})" :
+                                 attr.ValueType.ToString();
                 var driver = attr.Driver == Driver.System ?
                                  "system (不可修改)" :
                                  "narrative";
-                sb.AppendLine($"| {attr.Name} | {attr.DisplayName} | {attr.ValueType} | {driver} |");
+
+                sb.AppendLine($"| {attr.Name} | {attr.DisplayName} | {type} | {driver} |");
             }
 
             sb.AppendLine();
@@ -196,5 +208,24 @@ public sealed class PostProcessingStage
         }
 
         return sb.ToString();
+    }
+
+    private static string FormatEnumOptions(string config)
+    {
+        if (string.IsNullOrWhiteSpace(config))
+            return string.Empty;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(config);
+
+            if (doc.RootElement.TryGetProperty("options", out var optionsEl))
+                return string.Join("/", optionsEl.EnumerateArray().Select(e => e.GetString() ?? string.Empty));
+        }
+        catch (JsonException)
+        {
+        }
+
+        return string.Empty;
     }
 }

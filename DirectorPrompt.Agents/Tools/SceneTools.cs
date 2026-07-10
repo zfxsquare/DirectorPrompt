@@ -24,14 +24,14 @@ public sealed class SceneTools
         ),
         AIFunctionFactory.Create
         (
-            (long? afterSceneID, long? beforeSceneID, string timeLabel) =>
+            (string timeLabel, long? afterSceneID = null, long? beforeSceneID = null) =>
                 CreateSceneAsync(context, afterSceneID, beforeSceneID, timeLabel),
             "create_scene",
             """
             创建新场景, afterSceneID 与 beforeSceneID 至少填一个
+            timeLabel: 语义时间标签
             afterSceneID: 新场景在此场景之后
             beforeSceneID: 新场景在此场景之前
-            timeLabel: 语义时间标签
             """
         )
     ];

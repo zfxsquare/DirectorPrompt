@@ -20,7 +20,6 @@
 
     <ItemGroup>
         <PackageReference Include="CommunityToolkit.Mvvm"/>
-        <PackageReference Include="DiffPlex.Wpf"/>
         <PackageReference Include="Extended.Wpf.Toolkit"/>
         <PackageReference Include="DailyRoutines.CodeAnalysis">
             <PrivateAssets>all</PrivateAssets>

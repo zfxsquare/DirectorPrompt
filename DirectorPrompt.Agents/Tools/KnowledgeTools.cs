@@ -17,7 +17,7 @@ public sealed class KnowledgeTools
     [
         AIFunctionFactory.Create
         (
-            (string query, int? topK) => QueryKnowledgeAsync(context, query, topK),
+            (string query, int? topK = null) => QueryKnowledgeAsync(context, query, topK),
             "query_knowledge",
             """
             语义检索知识条目

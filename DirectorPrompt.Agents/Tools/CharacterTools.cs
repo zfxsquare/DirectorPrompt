@@ -21,7 +21,7 @@ public sealed class CharacterTools
     [
         AIFunctionFactory.Create
         (
-            (string query, int? topK) => SearchCharacterAsync(context, query, topK),
+            (string query, int? topK = null) => SearchCharacterAsync(context, query, topK),
             "search_character",
             """
             语义检索人物 (含已归档角色)
@@ -65,7 +65,7 @@ public sealed class CharacterTools
         ),
         AIFunctionFactory.Create
         (
-            (string name, string description, string categoryIDs, string? aliases, string reason) =>
+            (string name, string description, string categoryIDs, string reason, string? aliases = null) =>
                 AddCharacterAsync(context, name, description, categoryIDs, aliases, reason),
             "add_character",
             """
@@ -79,7 +79,7 @@ public sealed class CharacterTools
         ),
         AIFunctionFactory.Create
         (
-            (string name, string description, string? categoryIDs, string reason) =>
+            (string name, string description, string reason, string? categoryIDs = null) =>
                 UpdateCharacterAsync(context, name, description, categoryIDs, reason),
             "update_character",
             """
@@ -102,7 +102,7 @@ public sealed class CharacterTools
         ),
         AIFunctionFactory.Create
         (
-            (string sourceName, string targetName, string relationType, string? description, double? intensity, string reason) =>
+            (string sourceName, string targetName, string relationType, string reason, string? description = null, double? intensity = null) =>
                 SetRelationAsync(context, sourceName, targetName, relationType, description, intensity, reason),
             "set_relation",
             """

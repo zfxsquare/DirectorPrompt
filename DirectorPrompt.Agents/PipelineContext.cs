@@ -30,11 +30,7 @@ public sealed class PipelineContext
 
     public string? ThinkingOutput { get; set; }
 
-    public string? OriginalNarrative { get; set; }
-
     public string? PreviousSceneSummary { get; set; }
-
-    public string? CorrectionGuidance { get; set; }
 
     public Action<string, string>? OnStreamingUpdate { get; set; }
 

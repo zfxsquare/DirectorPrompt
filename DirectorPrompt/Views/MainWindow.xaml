@@ -337,14 +337,6 @@
                                                             Click="OnEditEntry"
                                                             Tag="{Binding}" />
                                                         <MenuItem
-                                                            Header="{Binding [Dialog.Rewrite], Source={x:Static loc:Loc.Instance}}"
-                                                            Click="OnRewriteRound"
-                                                            Tag="{Binding}" />
-                                                        <MenuItem
-                                                            Header="{Binding [Dialog.Correct], Source={x:Static loc:Loc.Instance}}"
-                                                            Click="OnCorrectRound"
-                                                            Tag="{Binding}" />
-                                                        <MenuItem
                                                             Header="{Binding [Dialog.Rollback], Source={x:Static loc:Loc.Instance}}"
                                                             Click="OnRollbackRound"
                                                             Tag="{Binding}" />

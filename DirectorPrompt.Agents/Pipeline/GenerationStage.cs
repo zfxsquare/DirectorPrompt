@@ -214,20 +214,6 @@ public sealed class GenerationStage
         foreach (var item in context.DirectiveBatch.Directives)
             sb.AppendLine($"{item.Order}. [{item.Type}] {item.Content}");
 
-        if (!string.IsNullOrWhiteSpace(context.OriginalNarrative))
-        {
-            sb.AppendLine();
-            sb.AppendLine("## 原叙事输出 (供参考)");
-            sb.AppendLine(context.OriginalNarrative);
-        }
-
-        if (!string.IsNullOrWhiteSpace(context.CorrectionGuidance))
-        {
-            sb.AppendLine();
-            sb.AppendLine("## 修正指引");
-            sb.AppendLine(context.CorrectionGuidance);
-        }
-
         return sb.ToString();
     }
 }

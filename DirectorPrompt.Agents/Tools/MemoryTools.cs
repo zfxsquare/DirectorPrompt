@@ -20,7 +20,7 @@ public sealed class MemoryTools
     [
         AIFunctionFactory.Create
         (
-            (string query, string? tags, int? topK) => QueryMemoryAsync(context, query, tags, topK),
+            (string query, string? tags = null, int? topK = null) => QueryMemoryAsync(context, query, tags, topK),
             "query_memory",
             """
             语义检索记忆条目
@@ -40,7 +40,7 @@ public sealed class MemoryTools
         ),
         AIFunctionFactory.Create
         (
-            (long sceneID, string content, string tags, string? characterIDs) =>
+            (long sceneID, string content, string tags, string? characterIDs = null) =>
                 CreateMemoryAsync(context, sceneID, content, tags, characterIDs),
             "create_memory",
             """
@@ -53,7 +53,7 @@ public sealed class MemoryTools
         ),
         AIFunctionFactory.Create
         (
-            (long memoryID, string content, string? tags, string? characterIDs) =>
+            (long memoryID, string content, string? tags = null, string? characterIDs = null) =>
                 UpdateMemoryAsync(context, memoryID, content, tags, characterIDs),
             "update_memory",
             """
@@ -66,7 +66,7 @@ public sealed class MemoryTools
         ),
         AIFunctionFactory.Create
         (
-            (string memoryIDs, string content, string tags, string? characterIDs) =>
+            (string memoryIDs, string content, string tags, string? characterIDs = null) =>
                 MergeMemoriesAsync(context, memoryIDs, content, tags, characterIDs),
             "merge_memories",
             """

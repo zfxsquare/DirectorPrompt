@@ -44,15 +44,4 @@ public interface IStateRepository
     Task<IReadOnlyList<StateChangeLog>> GetChangeLogsAsync(long attributeID, long? sceneID = null, CancellationToken cancellationToken = default);
 
     Task RollbackByRoundAsync(long sessionID, long roundID, CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<StateChangeCapture>> CaptureStateChangesAsync(long sessionID, long roundID, CancellationToken cancellationToken = default);
-
-    Task ReplayStateChangesAsync
-    (
-        long                              sessionID,
-        long                              targetRoundID,
-        IReadOnlyList<StateChangeCapture> tempChanges,
-        IReadOnlyList<StateChangeCapture> originalChanges,
-        CancellationToken                 cancellationToken = default
-    );
 }

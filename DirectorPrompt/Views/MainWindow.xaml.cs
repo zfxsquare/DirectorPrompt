@@ -1,4 +1,4 @@
-﻿using System.Collections.Specialized;
+﻿﻿using System.Collections.Specialized;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Controls.Primitives;
@@ -47,18 +47,6 @@ public partial class MainWindow : FluentWindow
     {
         if (sender is MenuItem { Tag: DialogEntryViewModel })
             _ = viewModel.RollbackLastRoundCommand.ExecuteAsync(null);
-    }
-
-    private void OnRewriteRound(object sender, RoutedEventArgs e)
-    {
-        if (sender is MenuItem { Tag: DialogEntryViewModel })
-            _ = viewModel.RewriteLastRoundCommand.ExecuteAsync(null);
-    }
-
-    private void OnCorrectRound(object sender, RoutedEventArgs e)
-    {
-        if (sender is MenuItem { Tag: DialogEntryViewModel })
-            _ = viewModel.CorrectLastRoundCommand.ExecuteAsync(null);
     }
 
     private void OnEditEntry(object sender, RoutedEventArgs e)

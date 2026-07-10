@@ -19,6 +19,8 @@ public sealed class PostProcessingStage
     ISceneRepository     sceneRepository
 )
 {
+    private const int ARCHIVE_THRESHOLD = 15;
+
     public async Task ExecuteAsync(PipelineContext context, CancellationToken cancellationToken = default)
     {
         var resolved = agentConfigResolver.Resolve(AgentTaskType.MemoryUpdate);
@@ -60,6 +62,14 @@ public sealed class PostProcessingStage
 
         await client.GetResponseAsync(messages, options, cancellationToken);
 
+        await characterRepository.ArchiveStaleAsync
+        (
+            context.SessionID,
+            context.RoundID,
+            ARCHIVE_THRESHOLD,
+            cancellationToken
+        );
+
         Log.Information("PostProcessingStage 完成: Memory Update Agent 已处理叙事文本");
     }
 
@@ -98,7 +108,7 @@ public sealed class PostProcessingStage
             sb.AppendLine();
         }
 
-        var characters = await characterRepository.GetBySessionAsync(context.SessionID, cancellationToken);
+        var characters = await characterRepository.GetActiveBySessionAsync(context.SessionID, cancellationToken);
 
         if (characters.Count > 0)
         {
@@ -110,14 +120,19 @@ public sealed class PostProcessingStage
                 sceneCharacterIDs = presence.Select(p => p.CharacterID).ToHashSet();
             }
 
-            sb.AppendLine("## 已有人物 (不要重复添加)");
+            sb.AppendLine("## 已有人物 (不要重复添加, 如不确定可调用 search_character 检索)");
 
             foreach (var c in characters)
             {
                 var inScene = sceneCharacterIDs.Contains(c.ID) ?
                                   " [在场]" :
                                   "";
-                sb.AppendLine($"- {c.Name} ({c.Status}){inScene}: {c.Description}");
+
+                var aliases = c.Aliases.Length > 0 ?
+                                  $" (别称: {string.Join(", ", c.Aliases)})" :
+                                  "";
+
+                sb.AppendLine($"- {c.Name}{aliases}{inScene}: {c.Description}");
             }
 
             sb.AppendLine();

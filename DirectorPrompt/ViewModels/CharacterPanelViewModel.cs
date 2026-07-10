@@ -37,9 +37,6 @@ public sealed partial class CharacterPanelItemViewModel : ObservableObject
     public partial string Name { get; set; } = string.Empty;
 
     [ObservableProperty]
-    public partial string Status { get; set; } = string.Empty;
-
-    [ObservableProperty]
     public partial string Description { get; set; } = string.Empty;
 
     [ObservableProperty]

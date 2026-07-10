@@ -34,7 +34,22 @@ public static class MemorySubAgentPrompt
         3. 新增人物时根据上下文从可用分类列表中选择合适的 categoryIDs (逗号分隔 ID)。若无匹配分类则传空字符串。
         4. 创建记忆时, 如涉及具体人物, 必须填写 characterIDs 参数 (人物 ID 列表, 逗号分隔)。
         5. 人物关系发生变化时, 调用 set_relation 更新关系, 并同时调用 create_memory 记录关系变化, characterIDs 填写相关人物 ID。
-        6. 标记人物离场用 remove_character (status=left), 死亡用 remove_character (status=dead)。
+        6. 人物永久离开叙事 (死亡、搬走、离职等) 时, 调用 create_memory 记录退场原因, 不修改人物状态。系统会根据活跃度自动归档长期未触及的角色。
+
+        人物建档门槛:
+
+        仅当叙事中的人物满足以下任一条件时才调用 add_character 建档:
+        - 有具体姓名或固定称谓
+        - 与已有角色产生直接互动 (对话、冲突、交易等)
+        - 导演指令明确引入的角色
+
+        仅被提及的群众、背景描述中的无名角色不建档, 只在 create_memory 中记录。
+
+        去重与别称:
+
+        - 建档前如不确定某人物是否已存在, 调用 search_character 语义检索确认
+        - 叙事中对已有人物的称呼与建档名不同时, 调用 add_alias 补充别称
+        - 别称包括: 昵称、称号、职位称呼、化名等
 
         主动提取有效信息，只调用工具，不输出任何文本。
         """;

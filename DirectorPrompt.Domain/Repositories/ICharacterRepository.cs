@@ -11,13 +11,34 @@ public interface ICharacterRepository
 
     Task<IReadOnlyList<Character>> GetBySessionAsync(long sessionID, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Character>> GetActiveBySessionAsync(long sessionID, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<Character>> GetBySceneAsync(long sceneID, CancellationToken cancellationToken = default);
 
     Task<Character> CreateAsync(Character character, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(Character character, CancellationToken cancellationToken = default);
 
-    Task SetStatusAsync(long characterID, CharacterStatus status, CancellationToken cancellationToken = default);
+    Task TouchAsync(long characterID, long roundID, CancellationToken cancellationToken = default);
+
+    Task ArchiveAsync(long characterID, CancellationToken cancellationToken = default);
+
+    Task ArchiveStaleAsync(long sessionID, long currentRound, int threshold, CancellationToken cancellationToken = default);
+
+    Task AddAliasAsync(long characterID, string alias, CancellationToken cancellationToken = default);
+
+    Task SaveEmbeddingAsync(long projectID, long characterID, byte[] embedding, string contentHash, CancellationToken cancellationToken = default);
+
+    Task DeleteEmbeddingAsync(long projectID, long characterID, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<(long characterID, float distance)>> SearchByVectorAsync
+    (
+        long                 projectID,
+        byte[]               queryVector,
+        int                  topK,
+        IReadOnlyList<long>? candidateIDs      = null,
+        CancellationToken    cancellationToken = default
+    );
 
     Task<IReadOnlyList<CharacterCategory>> GetCategoriesAsync(long projectID, CancellationToken cancellationToken = default);
 

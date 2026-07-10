@@ -14,9 +14,17 @@ public record Character
 
     public string Description { get; init; } = string.Empty;
 
+    public string[] Aliases { get; init; } = [];
+
     public long[] CategoryIDs { get; init; } = [];
 
     public CharacterStatus Status { get; init; } = CharacterStatus.Active;
+
+    public int TouchCount { get; init; }
+
+    public long LastTouchedRound { get; init; }
+
+    public string? ContentHash { get; init; }
 
     public DateTime CreatedAt { get; init; }
 

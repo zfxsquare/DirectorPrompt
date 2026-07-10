@@ -14,6 +14,8 @@ public sealed class VectorTableManager
 
     public static string GetMemoryTableName(long projectID) => $"memory_vec_{projectID}";
 
+    public static string GetCharacterTableName(long projectID) => $"character_vec_{projectID}";
+
     public async Task EnsureTableAsync(string tableName, int dimension, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);

@@ -11,11 +11,18 @@ public sealed class CharacterRepository : ICharacterRepository
 {
     private readonly SqliteConnectionFactory connectionFactory;
     private readonly IRoundChangeRepository  roundChangeRepository;
+    private readonly VectorTableManager      vectorTableManager;
 
-    public CharacterRepository(SqliteConnectionFactory connectionFactory, IRoundChangeRepository roundChangeRepository)
+    public CharacterRepository
+    (
+        SqliteConnectionFactory   connectionFactory,
+        IRoundChangeRepository    roundChangeRepository,
+        VectorTableManager        vectorTableManager
+    )
     {
         this.connectionFactory     = connectionFactory;
         this.roundChangeRepository = roundChangeRepository;
+        this.vectorTableManager    = vectorTableManager;
     }
 
     public async Task<Character?> GetByIDAsync(long id, CancellationToken cancellationToken = default)
@@ -57,6 +64,19 @@ public sealed class CharacterRepository : ICharacterRepository
         return rows.Select(r => r.ToCharacter()).ToList();
     }
 
+    public async Task<IReadOnlyList<Character>> GetActiveBySessionAsync(long sessionID, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        var rows = await connection.QueryAsync<CharacterRow>
+                   (
+                       "SELECT * FROM characters WHERE session_id = @sessionID AND status = 'active' ORDER BY last_touched_round DESC, id",
+                       new { sessionID }
+                   );
+
+        return rows.Select(r => r.ToCharacter()).ToList();
+    }
+
     public async Task<IReadOnlyList<Character>> GetBySceneAsync(long sceneID, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
@@ -85,20 +105,23 @@ public sealed class CharacterRepository : ICharacterRepository
         var id = await connection.ExecuteScalarAsync<long>
                  (
                      """
-                     INSERT INTO characters (project_id, session_id, name, description, category_ids, status, created_at, updated_at)
-                     VALUES (@projectID, @sessionID, @name, @description, @categoryIDs, @status, @createdAt, @updatedAt);
+                     INSERT INTO characters (project_id, session_id, name, description, aliases, category_ids, status, touch_count, last_touched_round, created_at, updated_at)
+                     VALUES (@projectID, @sessionID, @name, @description, @aliases, @categoryIDs, @status, @touchCount, @lastTouchedRound, @createdAt, @updatedAt);
                      SELECT last_insert_rowid();
                      """,
                      new
                      {
-                         projectID   = character.ProjectID,
-                         sessionID   = character.SessionID,
-                         name        = character.Name,
-                         description = character.Description,
-                         categoryIDs = JsonHelper.Serialize(character.CategoryIDs),
-                         status      = character.Status.ToString().ToLowerInvariant(),
-                         createdAt   = now,
-                         updatedAt   = now
+                         projectID        = character.ProjectID,
+                         sessionID        = character.SessionID,
+                         name             = character.Name,
+                         description      = character.Description,
+                         aliases          = JsonHelper.Serialize(character.Aliases),
+                         categoryIDs      = JsonHelper.Serialize(character.CategoryIDs),
+                         status           = character.Status.ToString().ToLowerInvariant(),
+                         touchCount       = character.TouchCount,
+                         lastTouchedRound = character.LastTouchedRound,
+                         createdAt        = now,
+                         updatedAt        = now
                      }
                  );
 
@@ -123,6 +146,7 @@ public sealed class CharacterRepository : ICharacterRepository
             UPDATE characters
             SET name = @name,
                 description = @description,
+                aliases = @aliases,
                 category_ids = @categoryIDs,
                 status = @status,
                 updated_at = @updatedAt
@@ -133,6 +157,7 @@ public sealed class CharacterRepository : ICharacterRepository
                 id          = character.ID,
                 name        = character.Name,
                 description = character.Description,
+                aliases     = JsonHelper.Serialize(character.Aliases),
                 categoryIDs = JsonHelper.Serialize(character.CategoryIDs),
                 status      = character.Status.ToString().ToLowerInvariant(),
                 updatedAt   = DateTime.UtcNow.ToString("O")
@@ -146,29 +171,246 @@ public sealed class CharacterRepository : ICharacterRepository
         }
     }
 
-    public async Task SetStatusAsync(long characterID, CharacterStatus status, CancellationToken cancellationToken = default)
+    public async Task TouchAsync(long characterID, long roundID, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        await connection.ExecuteAsync
+        (
+            """
+            UPDATE characters
+            SET touch_count = touch_count + 1,
+                last_touched_round = @roundID,
+                status = 'active',
+                updated_at = @updatedAt
+            WHERE id = @characterID
+            """,
+            new
+            {
+                characterID,
+                roundID,
+                updatedAt = DateTime.UtcNow.ToString("O")
+            }
+        );
+    }
+
+    public async Task ArchiveAsync(long characterID, CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.CreateAsync(cancellationToken);
 
         var oldRow = await connection.QueryFirstOrDefaultAsync<IDictionary<string, object>>
                      (
-                         "SELECT * FROM characters WHERE id = @id",
-                         new { id = characterID }
+                         "SELECT * FROM characters WHERE id = @characterID",
+                         new { characterID }
                      );
 
         await connection.ExecuteAsync
         (
-            "UPDATE characters SET status = @status, updated_at = @updatedAt WHERE id = @id",
+            "UPDATE characters SET status = 'archived', updated_at = @updatedAt WHERE id = @characterID",
             new
             {
-                id        = characterID,
-                status    = status.ToString().ToLowerInvariant(),
+                characterID,
                 updatedAt = DateTime.UtcNow.ToString("O")
             }
         );
 
         if (oldRow is not null)
             await roundChangeRepository.RecordUpdateAsync(RoundContext.Current ?? 0, "characters", characterID, JsonSerializer.Serialize(oldRow), cancellationToken);
+
+        var presenceRows = await connection.QueryAsync
+                           (
+                               "SELECT character_id, scene_id FROM character_scene_presence WHERE character_id = @characterID",
+                               new { characterID }
+                           );
+
+        if (presenceRows.Any())
+        {
+            await connection.ExecuteAsync
+            (
+                "DELETE FROM character_scene_presence WHERE character_id = @characterID",
+                new { characterID }
+            );
+
+            foreach (var row in presenceRows)
+            {
+                var oldData = JsonSerializer.Serialize(new { character_id = (long)row.character_id, scene_id = (long)row.scene_id });
+                await roundChangeRepository.RecordDeleteAsync(RoundContext.Current ?? 0, "character_scene_presence", 0, oldData, cancellationToken);
+            }
+        }
+    }
+
+    public async Task ArchiveStaleAsync
+    (
+        long              sessionID,
+        long              currentRound,
+        int               threshold,
+        CancellationToken cancellationToken = default
+    )
+    {
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        var staleIDs = await connection.QueryAsync<long>
+                       (
+                           """
+                           SELECT id FROM characters
+                           WHERE session_id = @sessionID
+                             AND status = 'active'
+                             AND ( @currentRound - last_touched_round ) > @threshold
+                           """,
+                           new { sessionID, currentRound, threshold }
+                       );
+
+        foreach (var id in staleIDs)
+            await ArchiveAsync(id, cancellationToken);
+    }
+
+    public async Task AddAliasAsync(long characterID, string alias, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        var oldRow = await connection.QueryFirstOrDefaultAsync<IDictionary<string, object>>
+                     (
+                         "SELECT * FROM characters WHERE id = @characterID",
+                         new { characterID }
+                     );
+
+        if (oldRow is null)
+            return;
+
+        var aliases = JsonHelper.DeserializeStringArray((string)oldRow["aliases"]);
+
+        if (aliases.Contains(alias))
+            return;
+
+        var updatedAliases = aliases.Append(alias).ToArray();
+
+        await connection.ExecuteAsync
+        (
+            "UPDATE characters SET aliases = @aliases, updated_at = @updatedAt WHERE id = @characterID",
+            new
+            {
+                characterID,
+                aliases   = JsonHelper.Serialize(updatedAliases),
+                updatedAt = DateTime.UtcNow.ToString("O")
+            }
+        );
+
+        await roundChangeRepository.RecordUpdateAsync
+        (
+            RoundContext.Current ?? 0,
+            "characters",
+            characterID,
+            JsonSerializer.Serialize(oldRow),
+            cancellationToken
+        );
+    }
+
+    public async Task SaveEmbeddingAsync
+    (
+        long                 projectID,
+        long                 characterID,
+        byte[]               embedding,
+        string               contentHash,
+        CancellationToken    cancellationToken = default
+    )
+    {
+        var dimension = embedding.Length / sizeof(float);
+        var tableName = VectorTableManager.GetCharacterTableName(projectID);
+
+        await vectorTableManager.EnsureTableAsync(tableName, dimension, cancellationToken);
+
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
+        try
+        {
+            await connection.ExecuteAsync
+            (
+                $"DELETE FROM \"{tableName}\" WHERE entry_id = @characterID",
+                new { characterID },
+                transaction
+            );
+
+            await connection.ExecuteAsync
+            (
+                $"INSERT INTO \"{tableName}\" (entry_id, embedding) VALUES (@characterID, @embedding)",
+                new { characterID, embedding },
+                transaction
+            );
+
+            await connection.ExecuteAsync
+            (
+                "UPDATE characters SET content_hash = @contentHash WHERE id = @characterID",
+                new { characterID, contentHash },
+                transaction
+            );
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+
+    public async Task DeleteEmbeddingAsync(long projectID, long characterID, CancellationToken cancellationToken = default)
+    {
+        var tableName = VectorTableManager.GetCharacterTableName(projectID);
+
+        if (!await vectorTableManager.TableExistsAsync(tableName, cancellationToken))
+            return;
+
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        await connection.ExecuteAsync
+        (
+            $"DELETE FROM \"{tableName}\" WHERE entry_id = @characterID",
+            new { characterID }
+        );
+    }
+
+    public async Task<IReadOnlyList<(long characterID, float distance)>> SearchByVectorAsync
+    (
+        long                 projectID,
+        byte[]               queryVector,
+        int                  topK,
+        IReadOnlyList<long>? candidateIDs      = null,
+        CancellationToken    cancellationToken = default
+    )
+    {
+        var tableName = VectorTableManager.GetCharacterTableName(projectID);
+
+        if (!await vectorTableManager.TableExistsAsync(tableName, cancellationToken))
+            return [];
+
+        await using var connection = await connectionFactory.CreateAsync(cancellationToken);
+
+        var sql = candidateIDs is { Count: > 0 } ?
+                      $"""
+                       SELECT entry_id AS CharacterID, distance AS Distance
+                       FROM "{tableName}"
+                       WHERE embedding MATCH @queryVector
+                         AND entry_id IN @candidateIDs
+                       ORDER BY distance
+                       LIMIT @topK
+                       """ :
+                      $"""
+                       SELECT entry_id AS CharacterID, distance AS Distance
+                       FROM "{tableName}"
+                       WHERE embedding MATCH @queryVector
+                       ORDER BY distance
+                       LIMIT @topK
+                       """;
+
+        var rows = await connection.QueryAsync<(long CharacterID, float Distance)>
+                   (
+                       sql,
+                       new { queryVector, topK, candidateIDs }
+                   );
+
+        return rows.Select(r => (r.CharacterID, r.Distance)).ToList();
     }
 
     public async Task<IReadOnlyList<CharacterCategory>> GetCategoriesAsync(long projectID, CancellationToken cancellationToken = default)
@@ -613,33 +855,40 @@ public sealed class CharacterRepository : ICharacterRepository
 
     private sealed class CharacterRow
     {
-        public long   ID           { get; set; }
-        public long   Project_ID   { get; set; }
-        public long   Session_ID   { get; set; }
-        public string Name         { get; set; } = string.Empty;
-        public string Description  { get; set; } = string.Empty;
-        public string Category_IDs { get; set; } = "[]";
-        public string Status       { get; set; } = "active";
-        public string Created_At   { get; set; } = string.Empty;
-        public string Updated_At   { get; set; } = string.Empty;
+        public long   ID                { get; set; }
+        public long   Project_ID        { get; set; }
+        public long   Session_ID        { get; set; }
+        public string Name              { get; set; } = string.Empty;
+        public string Description       { get; set; } = string.Empty;
+        public string Aliases           { get; set; } = "[]";
+        public string Category_IDs      { get; set; } = "[]";
+        public string Status            { get; set; } = "active";
+        public int    Touch_Count       { get; set; }
+        public long   Last_Touched_Round { get; set; }
+        public string? Content_Hash     { get; set; }
+        public string Created_At        { get; set; } = string.Empty;
+        public string Updated_At        { get; set; } = string.Empty;
 
         public Character ToCharacter() =>
             new()
             {
-                ID          = ID,
-                ProjectID   = Project_ID,
-                SessionID   = Session_ID,
-                Name        = Name,
-                Description = Description,
-                CategoryIDs = JsonHelper.DeserializeInt64Array(Category_IDs),
-                Status = Status switch
+                ID              = ID,
+                ProjectID       = Project_ID,
+                SessionID       = Session_ID,
+                Name            = Name,
+                Description     = Description,
+                Aliases         = JsonHelper.DeserializeStringArray(Aliases),
+                CategoryIDs     = JsonHelper.DeserializeInt64Array(Category_IDs),
+                Status          = Status switch
                 {
-                    "left" => CharacterStatus.Left,
-                    "dead" => CharacterStatus.Dead,
-                    _      => CharacterStatus.Active
+                    "archived" => CharacterStatus.Archived,
+                    _          => CharacterStatus.Active
                 },
-                CreatedAt = DateTime.Parse(Created_At),
-                UpdatedAt = DateTime.Parse(Updated_At)
+                TouchCount      = Touch_Count,
+                LastTouchedRound = Last_Touched_Round,
+                ContentHash     = Content_Hash,
+                CreatedAt       = DateTime.Parse(Created_At),
+                UpdatedAt       = DateTime.Parse(Updated_At)
             };
     }
 

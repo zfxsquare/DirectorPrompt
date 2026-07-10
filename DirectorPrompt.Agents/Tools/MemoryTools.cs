@@ -12,7 +12,8 @@ public sealed class MemoryTools
 (
     IMemoryRepository        memoryRepository,
     IEmbeddingServiceFactory embeddingServiceFactory,
-    OrchestratorConfig       orchestratorConfig
+    OrchestratorConfig       orchestratorConfig,
+    ICharacterRepository     characterRepository
 )
 {
     public IList<AIFunction> Create(ToolExecutionContext context) =>
@@ -288,6 +289,9 @@ public sealed class MemoryTools
 
         var created = await memoryRepository.CreateAsync(entry);
 
+        foreach (var characterID in characterList)
+            await characterRepository.TouchAsync(characterID, context.RoundID);
+
         Log.Information("工具调用完成: create_memory, memoryID={ID}", created.ID);
 
         return JsonSerializer.Serialize(new { memoryID = created.ID });
@@ -309,18 +313,23 @@ public sealed class MemoryTools
         if (existing is null)
             return JsonSerializer.Serialize(new { error = $"记忆 {memoryID} 不存在" });
 
+        var parsedCharacterIDs = string.IsNullOrWhiteSpace(characterIDs) ?
+                                     existing.RelatedCharacterIDs :
+                                     ParseCharacterIDs(characterIDs);
+
         var updated = existing with
         {
             Content = content,
             Tags = string.IsNullOrWhiteSpace(tags) ?
                        existing.Tags :
                        ParseTags(tags),
-            RelatedCharacterIDs = string.IsNullOrWhiteSpace(characterIDs) ?
-                                      existing.RelatedCharacterIDs :
-                                      ParseCharacterIDs(characterIDs)
+            RelatedCharacterIDs = parsedCharacterIDs
         };
 
         await memoryRepository.UpdateAsync(updated);
+
+        foreach (var characterID in parsedCharacterIDs)
+            await characterRepository.TouchAsync(characterID, context.RoundID);
 
         return JsonSerializer.Serialize(new { memoryID, success = true });
     }
@@ -346,6 +355,9 @@ public sealed class MemoryTools
         {
             var updated = merged with { RelatedCharacterIDs = charList };
             await memoryRepository.UpdateAsync(updated);
+
+            foreach (var characterID in charList)
+                await characterRepository.TouchAsync(characterID, context.RoundID);
         }
 
         return JsonSerializer.Serialize(new { memoryID = merged.ID });

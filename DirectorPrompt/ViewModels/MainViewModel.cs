@@ -482,7 +482,7 @@ public sealed partial class MainViewModel
 
             if (CurrentSession?.ID != sessionID)
             {
-                await orchestrator.DeleteRoundAsync(sessionID, result.RoundID);
+                await orchestrator.DeleteRoundAsync(sessionID, result.RoundID, token);
                 return;
             }
 
@@ -498,7 +498,7 @@ public sealed partial class MainViewModel
                 result.Narrative.Length
             );
 
-            await RefreshSidebarAsync();
+            await RefreshSidebarAsync(token);
 
             StatusMessage = Loc.Get("Status.Complete");
 
@@ -652,7 +652,7 @@ public sealed partial class MainViewModel
 
             if (CurrentSession?.ID != sessionID)
             {
-                await orchestrator.DeleteRoundAsync(sessionID, result.RoundID);
+                await orchestrator.DeleteRoundAsync(sessionID, result.RoundID, token);
                 return;
             }
 
@@ -661,7 +661,7 @@ public sealed partial class MainViewModel
             streamingEntry.Thinking = result.Thinking;
             streamingEntry.RenderMarkdown();
 
-            await RefreshSidebarAsync();
+            await RefreshSidebarAsync(token);
 
             StatusMessage = Loc.Get("Status.Complete");
 
@@ -758,7 +758,7 @@ public sealed partial class MainViewModel
 
             if (CurrentSession?.ID != sessionID)
             {
-                await orchestrator.RejectCorrectionAsync(sessionID, result.RoundID);
+                await orchestrator.RejectCorrectionAsync(sessionID, result.RoundID, token);
                 pendingCorrectionOriginalRoundID   = 0;
                 pendingCorrectionTempRoundID       = 0;
                 pendingCorrectionOriginalNarrative = null;
@@ -772,7 +772,7 @@ public sealed partial class MainViewModel
             streamingEntry.Thinking = result.Thinking;
             streamingEntry.RenderMarkdown();
 
-            await RefreshSidebarAsync();
+            await RefreshSidebarAsync(token);
 
             var accept = CorrectionCompareWindow.Show
             (
@@ -791,7 +791,8 @@ public sealed partial class MainViewModel
                 (
                     sessionID,
                     pendingCorrectionOriginalRoundID,
-                    pendingCorrectionTempRoundID
+                    pendingCorrectionTempRoundID,
+                    token
                 );
 
                 var originalNarrativeEntry = Dialog.Entries.FirstOrDefault
@@ -803,7 +804,7 @@ public sealed partial class MainViewModel
 
                 streamingEntry.RoundID = pendingCorrectionOriginalRoundID;
 
-                await RefreshSidebarAsync();
+                await RefreshSidebarAsync(token);
                 StatusMessage = Loc.Get("Status.CorrectionAccepted");
             }
             else
@@ -813,12 +814,13 @@ public sealed partial class MainViewModel
                 await orchestrator.RejectCorrectionAsync
                 (
                     sessionID,
-                    pendingCorrectionTempRoundID
+                    pendingCorrectionTempRoundID,
+                    token
                 );
 
                 Dialog.RemoveEntriesByRound(pendingCorrectionTempRoundID);
 
-                await RefreshSidebarAsync();
+                await RefreshSidebarAsync(token);
                 StatusMessage = Loc.Get("Status.CorrectionRejected");
             }
 
@@ -1237,7 +1239,6 @@ public sealed partial class MainViewModel
             {
                 ID          = c.ID,
                 Name        = c.Name,
-                Status      = c.Status.ToString(),
                 Description = c.Description,
                 Categories  = string.Join(", ", categories.Where(cat => c.CategoryIDs.Contains(cat.ID)).Select(cat => cat.Name))
             };
@@ -1360,7 +1361,7 @@ public sealed partial class MainViewModel
             foreach (var m in grp.Items)
             {
                 var charNames = m.RelatedCharacterIDs
-                                 .Where(id => charLookup.ContainsKey(id))
+                                 .Where(charLookup.ContainsKey)
                                  .Select(id => charLookup[id].Name)
                                  .ToList();
 

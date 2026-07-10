@@ -13,6 +13,12 @@ public static class LoggingConfiguration
 
         Directory.CreateDirectory(fullPath);
 
+        var logPath = Path.Combine(fullPath, "directorprompt.log");
+        var oldLogPath = Path.Combine(fullPath, "directorprompt.old.log");
+
+        if (File.Exists(logPath))
+            File.Move(logPath, oldLogPath, overwrite: true);
+
         return new LoggerConfiguration()
                .MinimumLevel.Debug()
                .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
@@ -22,9 +28,7 @@ public static class LoggingConfiguration
                (sink =>
                     sink.File
                     (
-                        Path.Combine(fullPath, "director-.log"),
-                        rollingInterval: RollingInterval.Day,
-                        retainedFileCountLimit: 14,
+                        logPath,
                         outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}"
                     )
                )

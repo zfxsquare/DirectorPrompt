@@ -5,17 +5,24 @@ namespace DirectorPrompt.Agents;
 
 public sealed class ConditionEngine : IConditionEngine
 {
-    public bool Evaluate(string condition, ConditionContext context)
+    public bool Evaluate(string expression, string currentValue)
     {
-        var tokens = Tokenizer.Tokenize(condition);
-        var parser = new Parser(tokens, context);
+        var isNumeric = float.TryParse(currentValue, NumberStyles.Float, CultureInfo.InvariantCulture, out _);
+        var valReplacement = isNumeric ?
+                                 currentValue :
+                                 $"\"{currentValue}\"";
+
+        var expr = expression.Replace("{val}", valReplacement);
+        expr = expr.Replace(" AND ", " && ").Replace(" OR ", " || ");
+
+        var tokens = Tokenizer.Tokenize(expr);
+        var parser = new Parser(tokens);
         return parser.ParseExpression();
     }
 
     private enum TokenType
     {
         Identifier,
-        Dot,
         StringLiteral,
         NumberLiteral,
         True,
@@ -77,7 +84,6 @@ public sealed class ConditionEngine : IConditionEngine
             {
                 '('                                 => Single(TokenType.LParen),
                 ')'                                 => Single(TokenType.RParen),
-                '.'                                 => Single(TokenType.Dot),
                 '='                                 => ReadEq(),
                 '!'                                 => ReadNot(),
                 '>'                                 => ReadGt(),
@@ -217,8 +223,7 @@ public sealed class ConditionEngine : IConditionEngine
 
     private sealed class Parser
     (
-        List<Token>      tokens,
-        ConditionContext context
+        List<Token> tokens
     )
     {
         private int pos;
@@ -314,35 +319,9 @@ public sealed class ConditionEngine : IConditionEngine
                     pos++;
                     return false;
 
-                case TokenType.Identifier:
-                    return ParseReference();
-
                 default:
                     throw new ArgumentException($"意外的 token: {token.Text}");
             }
-        }
-
-        private object? ParseReference()
-        {
-            var prefix = Advance().Text;
-
-            if (Peek().Type != TokenType.Dot)
-                throw new ArgumentException($"期望 '.' 在 '{prefix}' 之后");
-
-            pos++;
-
-            if (Peek().Type != TokenType.Identifier)
-                throw new ArgumentException("期望标识符");
-
-            var name = Advance().Text;
-
-            return prefix switch
-            {
-                "state" => context.StateValues.TryGetValue(name, out var value) ?
-                               value :
-                               null,
-                _ => throw new ArgumentException($"未知的引用前缀: '{prefix}'")
-            };
         }
 
         private static bool EvaluateComparison(object? left, TokenType op, object? right) =>
@@ -391,12 +370,5 @@ public sealed class ConditionEngine : IConditionEngine
             pos < tokens.Count ?
                 tokens[pos] :
                 new Token(TokenType.EndOfInput, string.Empty);
-
-        private Token Advance()
-        {
-            var token = Peek();
-            pos++;
-            return token;
-        }
     }
 }

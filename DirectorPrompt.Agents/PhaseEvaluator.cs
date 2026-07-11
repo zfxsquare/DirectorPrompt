@@ -1,4 +1,3 @@
-using System.Globalization;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
@@ -150,17 +149,9 @@ public sealed class PhaseEvaluator
         if (string.IsNullOrWhiteSpace(expression))
             return false;
 
-        var isNumeric = float.TryParse(currentValue, NumberStyles.Float, CultureInfo.InvariantCulture, out _);
-        var valReplacement = isNumeric ?
-                                 currentValue :
-                                 $"\"{currentValue}\"";
-
-        var expr = expression.Replace("{val}", valReplacement);
-        expr = expr.Replace(" AND ", " && ").Replace(" OR ", " || ");
-
         try
         {
-            return conditionEngine.Evaluate(expr, new ConditionContext(new Dictionary<string, string>()));
+            return conditionEngine.Evaluate(expression, currentValue);
         }
         catch (Exception ex)
         {

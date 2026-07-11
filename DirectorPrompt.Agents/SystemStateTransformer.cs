@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Globalization;
 using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
@@ -302,17 +301,9 @@ public sealed class SystemStateTransformer
         if (!stateValues.TryGetValue(transition.AttributeName, out var value))
             return false;
 
-        var isNumeric = float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out _);
-        var valReplacement = isNumeric ?
-                                 value :
-                                 $"\"{value}\"";
-
-        var expr = transition.Expression.Replace("{val}", valReplacement);
-        expr = expr.Replace(" AND ", " && ").Replace(" OR ", " || ");
-
         try
         {
-            return conditionEngine.Evaluate(expr, new ConditionContext(new Dictionary<string, string>()));
+            return conditionEngine.Evaluate(transition.Expression, value);
         }
         catch (Exception ex)
         {

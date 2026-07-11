@@ -12,13 +12,15 @@ using Serilog;
 
 namespace DirectorPrompt.ViewModels;
 
-public sealed partial class ProjectEditViewModel : ObservableObject
+public sealed partial class ProjectEditViewModel
+(
+    IProjectRepository   projectRepository,
+    IKnowledgeRepository knowledgeRepository,
+    IStateRepository     stateRepository,
+    ICharacterRepository characterRepository
+)
+    : ObservableObject
 {
-    private readonly IProjectRepository   projectRepository;
-    private readonly IKnowledgeRepository knowledgeRepository;
-    private readonly IStateRepository     stateRepository;
-    private readonly ICharacterRepository characterRepository;
-
     private long projectID;
 
     [ObservableProperty]
@@ -56,20 +58,6 @@ public sealed partial class ProjectEditViewModel : ObservableObject
     public bool SaveSuccess { get; private set; }
 
     public long SavedProjectID { get; private set; }
-
-    public ProjectEditViewModel
-    (
-        IProjectRepository   projectRepository,
-        IKnowledgeRepository knowledgeRepository,
-        IStateRepository     stateRepository,
-        ICharacterRepository characterRepository
-    )
-    {
-        this.projectRepository   = projectRepository;
-        this.knowledgeRepository = knowledgeRepository;
-        this.stateRepository     = stateRepository;
-        this.characterRepository = characterRepository;
-    }
 
     public async Task LoadFromProjectAsync(Project project)
     {
@@ -149,115 +137,56 @@ public sealed partial class ProjectEditViewModel : ObservableObject
         if (string.IsNullOrWhiteSpace(json) || json == "{}")
             return;
 
-        try
+        var config = AttributeConfigSerializer.Deserialize<StateAttributeConfigDTO>(json);
+
+        if (config is null)
+            return;
+
+        vm.MinValue    = config.Min;
+        vm.MaxValue    = config.Max;
+        vm.Unit        = config.Unit ?? string.Empty;
+        vm.ChangeRules = config.ChangeRules ?? string.Empty;
+
+        if (config.Options is not null)
+            vm.Options = string.Join(", ", config.Options);
+
+        if (config.Trigger is not null && Enum.TryParse<SystemTrigger>(config.Trigger, out var t))
+            vm.Trigger = t;
+
+        vm.GenerationGuide = config.GenerationGuide ?? string.Empty;
+
+        if (config.RegenerateTrigger is not null && Enum.TryParse<SystemTrigger>(config.RegenerateTrigger, out var rt))
+            vm.RegenerateTrigger = rt;
+
+        foreach (var phase in config.Phases)
         {
-            using var doc = JsonDocument.Parse(json);
+            var phaseVM = new PhaseEditViewModel();
+            phaseVM.PopulateAvailableKnowledge(KnowledgeGroups);
 
-            if (doc.RootElement.TryGetProperty("min", out var min))
-            {
-                vm.MinValue = min.ValueKind == JsonValueKind.Null ?
-                                  null :
-                                  min.GetSingle();
-            }
+            var enterDirs = ToDirectiveItems(phase.EnterDirectives);
+            var exitDirs  = ToDirectiveItems(phase.ExitDirectives);
 
-            if (doc.RootElement.TryGetProperty("max", out var max))
-            {
-                vm.MaxValue = max.ValueKind == JsonValueKind.Null ?
-                                  null :
-                                  max.GetSingle();
-            }
+            phaseVM.SyncFromConfig
+            (
+                phase.Name,
+                phase.Expression,
+                phase.KnowledgeIDs.ToArray(),
+                phase.KnowledgeGroupIDs.ToArray(),
+                enterDirs,
+                exitDirs
+            );
 
-            if (doc.RootElement.TryGetProperty("unit", out var unit) && unit.ValueKind != JsonValueKind.Null)
-                vm.Unit = unit.GetString() ?? string.Empty;
-
-            if (doc.RootElement.TryGetProperty("changeRules", out var rules) && rules.ValueKind != JsonValueKind.Null)
-                vm.ChangeRules = rules.GetString() ?? string.Empty;
-
-            if (doc.RootElement.TryGetProperty("options", out var opts) && opts.ValueKind == JsonValueKind.Array)
-                vm.Options = string.Join(", ", opts.EnumerateArray().Select(o => o.GetString() ?? string.Empty));
-
-            if (doc.RootElement.TryGetProperty("trigger", out var trigger) && trigger.ValueKind != JsonValueKind.Null)
-            {
-                if (Enum.TryParse<SystemTrigger>(trigger.GetString(), out var t))
-                    vm.Trigger = t;
-            }
-
-            if (doc.RootElement.TryGetProperty("generationGuide", out var guide) && guide.ValueKind != JsonValueKind.Null)
-                vm.GenerationGuide = guide.GetString() ?? string.Empty;
-
-            if (doc.RootElement.TryGetProperty("regenerateTrigger", out var regen) && regen.ValueKind != JsonValueKind.Null)
-            {
-                if (Enum.TryParse<SystemTrigger>(regen.GetString(), out var rt))
-                    vm.RegenerateTrigger = rt;
-            }
-
-            if (doc.RootElement.TryGetProperty("phases", out var phasesEl) && phasesEl.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var ph in phasesEl.EnumerateArray())
-                {
-                    var phaseVM = new PhaseEditViewModel();
-                    phaseVM.PopulateAvailableKnowledge(KnowledgeGroups);
-
-                    var phName = ph.TryGetProperty("name", out var pn) && pn.ValueKind != JsonValueKind.Null ?
-                                     pn.GetString() ?? string.Empty :
-                                     string.Empty;
-
-                    var phExpr = ph.TryGetProperty("expression", out var pe) && pe.ValueKind != JsonValueKind.Null ?
-                                     pe.GetString() ?? string.Empty :
-                                     string.Empty;
-
-                    var kIds = ph.TryGetProperty("knowledgeIds", out var kid) && kid.ValueKind == JsonValueKind.Array ?
-                                   kid.EnumerateArray().Select(v => v.GetInt64()).ToArray() :
-                                   [];
-                    var gIds = ph.TryGetProperty("knowledgeGroupIds", out var gid) && gid.ValueKind == JsonValueKind.Array ?
-                                   gid.EnumerateArray().Select(v => v.GetInt64()).ToArray() :
-                                   [];
-
-                    var enterDirs = ParsePhaseDirectives(ph, "enterDirectives");
-                    var exitDirs  = ParsePhaseDirectives(ph, "exitDirectives");
-
-                    phaseVM.SyncFromConfig(phName, phExpr, kIds, gIds, enterDirs, exitDirs);
-                    vm.Phases.Add(phaseVM);
-                }
-            }
-        }
-        catch
-        {
-            // ignored
+            vm.Phases.Add(phaseVM);
         }
     }
 
-    private static List<DirectiveItem> ParsePhaseDirectives(JsonElement phaseEl, string propertyName)
+    private static List<DirectiveItem> ToDirectiveItems(IReadOnlyList<DirectiveConfig> directives)
     {
         var result = new List<DirectiveItem>();
+        var order  = 1;
 
-        if (!phaseEl.TryGetProperty(propertyName, out var arr) || arr.ValueKind != JsonValueKind.Array)
-            return result;
-
-        foreach (var item in arr.EnumerateArray())
-        {
-            var typeStr = item.TryGetProperty("type", out var t) && t.ValueKind != JsonValueKind.Null ?
-                              t.GetString() ?? "Plot" :
-                              "Plot";
-
-            var type = typeStr switch
-            {
-                "Tone"                => DirectiveType.Tone,
-                "TemporaryConstraint" => DirectiveType.TemporaryConstraint,
-                "SceneChange"         => DirectiveType.SceneChange,
-                _                     => DirectiveType.Plot
-            };
-
-            var content = item.TryGetProperty("content", out var c) && c.ValueKind != JsonValueKind.Null ?
-                              c.GetString() ?? string.Empty :
-                              string.Empty;
-
-            var ttl = item.TryGetProperty("ttl", out var ttlEl) && ttlEl.ValueKind == JsonValueKind.Number ?
-                          ttlEl.GetInt32() :
-                          (int?)null;
-
-            result.Add(new DirectiveItem(type, content, result.Count + 1, ttl));
-        }
+        foreach (var d in directives)
+            result.Add(new DirectiveItem(d.Type, d.Content, order++, d.TTL));
 
         return result;
     }
@@ -329,8 +258,7 @@ public sealed partial class ProjectEditViewModel : ObservableObject
 
             ParseStateConfig(attrVM, attr.Config);
 
-
-            if (attr.Scope == StateScope.Category && attr.CategoryID is not null)
+            if (attr is { Scope: StateScope.Category, CategoryID: not null })
             {
                 var catVM = CharacterCategories.FirstOrDefault(c => c.ID == attr.CategoryID.Value);
 
@@ -852,4 +780,17 @@ public sealed partial class ProjectEditViewModel : ObservableObject
     [RelayCommand]
     private void RemovePhaseKnowledge((PhaseEditViewModel phase, KnowledgeSelectionItem item) args) =>
         args.phase.RemoveLinkedItem(args.item);
+    
+    private sealed record StateAttributeConfigDTO
+    {
+        public float?        Min               { get; init; }
+        public float?        Max               { get; init; }
+        public string?       Unit              { get; init; }
+        public string?       ChangeRules       { get; init; }
+        public List<string>? Options           { get; init; }
+        public string?       Trigger           { get; init; }
+        public string?       GenerationGuide   { get; init; }
+        public string?       RegenerateTrigger { get; init; }
+        public List<Phase>   Phases            { get; init; } = [];
+    }
 }

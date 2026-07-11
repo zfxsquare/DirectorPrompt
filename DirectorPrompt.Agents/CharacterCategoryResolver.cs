@@ -1,4 +1,4 @@
-using System.Text.Json;
+using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
@@ -164,17 +164,10 @@ public sealed class CharacterCategoryResolver
 
         if (attr.ValueType == StateValueType.Enum)
         {
-            try
-            {
-                using var doc = JsonDocument.Parse(attr.Config);
+            var config = AttributeConfigSerializer.Deserialize<EnumAttributeConfig>(attr.Config);
 
-                if (doc.RootElement.TryGetProperty("options", out var options) && options.GetArrayLength() > 0)
-                    return options[0].GetString() ?? string.Empty;
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "解析 enum 配置失败: attrID={AttributeID}", attr.ID);
-            }
+            if (config is not null && config.Options.Count > 0)
+                return config.Options[0];
         }
 
         return string.Empty;

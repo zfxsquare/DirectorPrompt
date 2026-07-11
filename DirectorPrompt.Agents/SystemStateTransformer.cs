@@ -1,4 +1,4 @@
-using System.Text.Json;
+using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
@@ -177,12 +177,12 @@ public sealed class SystemStateTransformer
         CancellationToken          cancellationToken
     )
     {
-        var config = ParseEnumConfig(attr.Config);
+        var config = AttributeConfigSerializer.Deserialize<EnumAttributeConfig>(attr.Config);
 
         if (config is null)
             return;
 
-        if (!IsTriggerMatch(config.Trigger, trigger))
+        if (!IsTriggerMatch(ParseTrigger(config.Trigger), trigger))
             return;
 
         if (string.IsNullOrEmpty(currentValue))
@@ -229,12 +229,12 @@ public sealed class SystemStateTransformer
         CancellationToken          cancellationToken
     )
     {
-        var config = ParseCompositeConfig(attr.Config);
+        var config = AttributeConfigSerializer.Deserialize<CompositeAttributeConfig>(attr.Config);
 
         if (config is null)
             return;
 
-        if (config.RegenerateTrigger.HasValue && IsTriggerMatch(config.RegenerateTrigger.Value, trigger))
+        if (config.RegenerateTrigger is not null && IsTriggerMatch(ParseTrigger(config.RegenerateTrigger), trigger))
         {
             var shouldRegenerate = true;
 
@@ -269,7 +269,7 @@ public sealed class SystemStateTransformer
     private string ResolveEnumTransition
     (
         string                     currentValue,
-        EnumConfig                 config,
+        EnumAttributeConfig        config,
         Dictionary<string, string> stateValues
     )
     {
@@ -332,91 +332,6 @@ public sealed class SystemStateTransformer
     private static bool IsTriggerMatch(SystemTrigger configTrigger, SystemTrigger actualTrigger) =>
         configTrigger == actualTrigger;
 
-    private static EnumConfig? ParseEnumConfig(string json)
-    {
-        try
-        {
-            using var doc  = JsonDocument.Parse(json);
-            var       root = doc.RootElement;
-
-            var config = new EnumConfig
-            {
-                Options = root.TryGetProperty("options", out var optionsEl) ?
-                              optionsEl.EnumerateArray().Select(e => e.GetString() ?? string.Empty).ToList() :
-                              new List<string>(),
-                Trigger = root.TryGetProperty("trigger", out var triggerEl) ?
-                              ParseTrigger(triggerEl.GetString()) :
-                              SystemTrigger.RoundEnd
-            };
-
-            if (root.TryGetProperty("transitionRules", out var rulesEl))
-            {
-                foreach (var fromProp in rulesEl.EnumerateObject())
-                {
-                    var transitions = new Dictionary<string, float>();
-
-                    foreach (var toProp in fromProp.Value.EnumerateObject())
-                        transitions[toProp.Name] = toProp.Value.GetSingle();
-
-                    config.TransitionRules[fromProp.Name] = transitions;
-                }
-            }
-
-            if (root.TryGetProperty("conditions", out var condsEl))
-            {
-                foreach (var condEl in condsEl.EnumerateArray())
-                {
-                    var when        = condEl.GetProperty("when").GetString() ?? string.Empty;
-                    var transitions = new Dictionary<string, float>();
-
-                    if (condEl.TryGetProperty("transition", out var transEl))
-                    {
-                        foreach (var prop in transEl.EnumerateObject())
-                            transitions[prop.Name] = prop.Value.GetSingle();
-                    }
-
-                    config.Conditions.Add(new EnumCondition { When = when, Transition = transitions });
-                }
-            }
-
-            return config;
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "解析 enum 配置失败");
-            return null;
-        }
-    }
-
-    private static CompositeConfig? ParseCompositeConfig(string json)
-    {
-        try
-        {
-            using var doc  = JsonDocument.Parse(json);
-            var       root = doc.RootElement;
-
-            var config = new CompositeConfig
-            {
-                GenerationGuide = root.TryGetProperty("generationGuide", out var guideEl) ?
-                                      guideEl.GetString() ?? string.Empty :
-                                      string.Empty
-            };
-
-            if (root.TryGetProperty("regenerateTrigger", out var triggerEl))
-                config.RegenerateTrigger = ParseTrigger(triggerEl.GetString());
-
-            if (root.TryGetProperty("regenerateCondition", out var condEl))
-                config.RegenerateCondition = condEl.GetString();
-
-            return config;
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "解析 composite 配置失败");
-            return null;
-        }
-    }
-
     private static SystemTrigger ParseTrigger(string? value) =>
         value switch
         {
@@ -425,25 +340,4 @@ public sealed class SystemStateTransformer
             "custom"       => SystemTrigger.Custom,
             _              => SystemTrigger.RoundEnd
         };
-
-    private sealed class EnumConfig
-    {
-        public List<string>                                  Options         { get; set; } = [];
-        public Dictionary<string, Dictionary<string, float>> TransitionRules { get; set; } = [];
-        public List<EnumCondition>                           Conditions      { get; set; } = [];
-        public SystemTrigger                                 Trigger         { get; set; } = SystemTrigger.RoundEnd;
-    }
-
-    private sealed class EnumCondition
-    {
-        public string                    When       { get; set; } = string.Empty;
-        public Dictionary<string, float> Transition { get; set; } = [];
-    }
-
-    private sealed class CompositeConfig
-    {
-        public string         GenerationGuide     { get; set; } = string.Empty;
-        public SystemTrigger? RegenerateTrigger   { get; set; }
-        public string?        RegenerateCondition { get; set; }
-    }
 }

@@ -1,7 +1,8 @@
 using System.Text;
-using System.Text.Json;
 using DirectorPrompt.Agents.Tools;
+using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
+using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
 using Microsoft.Extensions.AI;
 using Serilog;
@@ -92,25 +93,24 @@ public sealed class PostProcessingStage
             }
         }
 
-        var attributes = await stateRepository.GetAttributesAsync(context.ProjectID, StateScope.Global, cancellationToken);
+        var attributes = (await stateRepository.GetAttributesAsync(context.ProjectID, StateScope.Global, cancellationToken))
+                         .Where(a => a.Driver == Driver.Narrative)
+                         .ToList();
 
         if (attributes.Count > 0)
         {
             sb.AppendLine("## 可用状态属性 (调用工具时使用 Name 字段的值)");
-            sb.AppendLine("| Name | 显示名 | 当前值 | 类型 | 驱动 |");
-            sb.AppendLine("|------|--------|--------|------|------|");
+            sb.AppendLine("| Name | 显示名 | 当前值 | 类型 | 约束 | 规则 |");
+            sb.AppendLine("|------|--------|--------|------|------|------|");
 
             foreach (var attr in attributes)
             {
                 var value = await stateRepository.GetStateValueAsync(attr.ID, context.SessionID, cancellationToken);
-                var type = attr.ValueType == StateValueType.Enum ?
-                               $"Enum({FormatEnumOptions(attr.Config)})" :
-                               attr.ValueType.ToString();
-                var driver = attr.Driver == Driver.System ?
-                                 "system (不可修改)" :
-                                 "narrative";
+                var type       = FormatType(attr);
+                var constraint = FormatConstraint(attr);
+                var rules      = FormatRules(attr);
 
-                sb.AppendLine($"| {attr.Name} | {attr.DisplayName} | {value?.Value ?? "未设置"} | {type} | {driver} |");
+                sb.AppendLine($"| {attr.Name} | {attr.DisplayName} | {value?.Value ?? "未设置"} | {type} | {constraint} | {rules} |");
             }
 
             sb.AppendLine();
@@ -146,24 +146,23 @@ public sealed class PostProcessingStage
             sb.AppendLine();
         }
 
-        var categoryAttrs = await stateRepository.GetAttributesAsync(context.ProjectID, StateScope.Category, cancellationToken);
+        var categoryAttrs = (await stateRepository.GetAttributesAsync(context.ProjectID, StateScope.Category, cancellationToken))
+                            .Where(a => a.Driver == Driver.Narrative)
+                            .ToList();
 
         if (categoryAttrs.Count > 0)
         {
             sb.AppendLine("## 人物状态属性 (调用工具时使用 Name 字段的值)");
-            sb.AppendLine("| Name | 显示名 | 类型 | 驱动 |");
-            sb.AppendLine("|------|--------|------|------|");
+            sb.AppendLine("| Name | 显示名 | 类型 | 约束 | 规则 |");
+            sb.AppendLine("|------|--------|------|------|------|");
 
             foreach (var attr in categoryAttrs)
             {
-                var type = attr.ValueType == StateValueType.Enum ?
-                               $"Enum({FormatEnumOptions(attr.Config)})" :
-                               attr.ValueType.ToString();
-                var driver = attr.Driver == Driver.System ?
-                                 "system (不可修改)" :
-                                 "narrative";
+                var type       = FormatType(attr);
+                var constraint = FormatConstraint(attr);
+                var rules      = FormatRules(attr);
 
-                sb.AppendLine($"| {attr.Name} | {attr.DisplayName} | {type} | {driver} |");
+                sb.AppendLine($"| {attr.Name} | {attr.DisplayName} | {type} | {constraint} | {rules} |");
             }
 
             sb.AppendLine();
@@ -182,8 +181,13 @@ public sealed class PostProcessingStage
 
                 var parts = new List<string>();
 
+                var categoryAttrIDs = categoryAttrs.Select(a => a.ID).ToHashSet();
+
                 foreach (var v in values)
                 {
+                    if (!categoryAttrIDs.Contains(v.AttributeID))
+                        continue;
+
                     var attr = categoryAttrs.FirstOrDefault(a => a.ID == v.AttributeID);
                     var name = attr?.Name ?? v.AttributeID.ToString();
                     parts.Add($"{name}={v.Value}");
@@ -210,22 +214,60 @@ public sealed class PostProcessingStage
         return sb.ToString();
     }
 
-    private static string FormatEnumOptions(string config)
+    private static string FormatType(StateAttribute attr) =>
+        attr.ValueType switch
+        {
+            StateValueType.Enum      => $"Enum({FormatEnumOptions(attr.Config)})",
+            StateValueType.Composite => "Composite",
+            _                        => "Numeric"
+        };
+
+    private static string FormatConstraint(StateAttribute attr)
     {
-        if (string.IsNullOrWhiteSpace(config))
+        if (attr.ValueType != StateValueType.Numeric)
             return string.Empty;
 
-        try
-        {
-            using var doc = JsonDocument.Parse(config);
+        var config = AttributeConfigSerializer.Deserialize<NumericAttributeConfig>(attr.Config);
 
-            if (doc.RootElement.TryGetProperty("options", out var optionsEl))
-                return string.Join("/", optionsEl.EnumerateArray().Select(e => e.GetString() ?? string.Empty));
-        }
-        catch (JsonException)
-        {
-        }
+        if (config is null)
+            return string.Empty;
 
-        return string.Empty;
+        var min = config.Min?.ToString();
+        var max = config.Max?.ToString();
+
+        var range = (min, max) switch
+        {
+            (not null, not null) => $"{min}~{max}",
+            (not null, null)     => $"≥{min}",
+            (null, not null)     => $"≤{max}",
+            _                    => string.Empty
+        };
+
+        return string.IsNullOrEmpty(config.Unit) ?
+                   range :
+                   string.IsNullOrEmpty(range) ?
+                       config.Unit :
+                       $"{range} {config.Unit}";
+    }
+
+    private static string FormatRules(StateAttribute attr)
+    {
+        if (attr.ValueType != StateValueType.Numeric)
+            return string.Empty;
+
+        var config = AttributeConfigSerializer.Deserialize<NumericAttributeConfig>(attr.Config);
+
+        return string.IsNullOrWhiteSpace(config?.ChangeRules) ?
+                   string.Empty :
+                   config.ChangeRules;
+    }
+
+    private static string FormatEnumOptions(string config)
+    {
+        var parsed = AttributeConfigSerializer.Deserialize<EnumAttributeConfig>(config);
+
+        return parsed is null || parsed.Options.Count == 0 ?
+                   string.Empty :
+                   string.Join("/", parsed.Options);
     }
 }

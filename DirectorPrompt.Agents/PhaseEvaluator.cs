@@ -1,5 +1,5 @@
 using System.Globalization;
-using System.Text.Json;
+using DirectorPrompt.Domain.Configurations;
 using DirectorPrompt.Domain.Enums;
 using DirectorPrompt.Domain.Models;
 using DirectorPrompt.Domain.Repositories;
@@ -140,99 +140,9 @@ public sealed class PhaseEvaluator
 
     internal static List<Phase> ParsePhases(string config)
     {
-        var result = new List<Phase>();
+        var parsed = AttributeConfigSerializer.Deserialize<PhaseConfig>(config);
 
-        try
-        {
-            using var doc = JsonDocument.Parse(config);
-
-            if (!doc.RootElement.TryGetProperty("phases", out var phasesEl) || phasesEl.ValueKind != JsonValueKind.Array)
-                return result;
-
-            foreach (var ph in phasesEl.EnumerateArray())
-            {
-                var name = ph.TryGetProperty("name", out var n) && n.ValueKind != JsonValueKind.Null ?
-                               n.GetString() ?? string.Empty :
-                               string.Empty;
-
-                var expression = ph.TryGetProperty("expression", out var e) && e.ValueKind != JsonValueKind.Null ?
-                                     e.GetString() ?? string.Empty :
-                                     string.Empty;
-
-                var knowledgeIds = ph.TryGetProperty("knowledgeIds", out var kid) && kid.ValueKind == JsonValueKind.Array ?
-                                       kid.EnumerateArray().Select(v => v.GetInt64()).ToList() :
-                                       new List<long>();
-
-                var knowledgeGroupIds = ph.TryGetProperty("knowledgeGroupIds", out var gid) && gid.ValueKind == JsonValueKind.Array ?
-                                            gid.EnumerateArray().Select(v => v.GetInt64()).ToList() :
-                                            new List<long>();
-
-                var enterDirectives = ParseDirectiveConfigs(ph, "enterDirectives");
-                var exitDirectives  = ParseDirectiveConfigs(ph, "exitDirectives");
-
-                result.Add
-                (
-                    new Phase
-                    {
-                        Name              = name,
-                        Expression        = expression,
-                        KnowledgeIDs      = knowledgeIds,
-                        KnowledgeGroupIDs = knowledgeGroupIds,
-                        EnterDirectives   = enterDirectives,
-                        ExitDirectives    = exitDirectives
-                    }
-                );
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "解析 Phase 配置失败");
-        }
-
-        return result;
-    }
-
-    private static List<DirectiveConfig> ParseDirectiveConfigs(JsonElement phaseEl, string propertyName)
-    {
-        var result = new List<DirectiveConfig>();
-
-        if (!phaseEl.TryGetProperty(propertyName, out var arr) || arr.ValueKind != JsonValueKind.Array)
-            return result;
-
-        foreach (var item in arr.EnumerateArray())
-        {
-            var typeStr = item.TryGetProperty("type", out var t) && t.ValueKind != JsonValueKind.Null ?
-                              t.GetString() ?? "Plot" :
-                              "Plot";
-
-            var type = typeStr switch
-            {
-                "Tone"                => DirectiveType.Tone,
-                "TemporaryConstraint" => DirectiveType.TemporaryConstraint,
-                "SceneChange"         => DirectiveType.SceneChange,
-                _                     => DirectiveType.Plot
-            };
-
-            var content = item.TryGetProperty("content", out var c) && c.ValueKind != JsonValueKind.Null ?
-                              c.GetString() ?? string.Empty :
-                              string.Empty;
-
-            var ttl = item.TryGetProperty("ttl", out var ttlEl) && ttlEl.ValueKind == JsonValueKind.Number ?
-                          ttlEl.GetInt32() :
-                          (int?)null;
-
-            result.Add
-            (
-                new DirectiveConfig
-                {
-                    Type    = type,
-                    Content = content,
-                    TTL     = ttl
-                }
-            );
-        }
-
-        return result;
+        return parsed?.Phases ?? [];
     }
 
     private bool EvaluatePhaseExpression(string expression, string currentValue)

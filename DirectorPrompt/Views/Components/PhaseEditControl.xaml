@@ -5,9 +5,22 @@
              xmlns:loc="clr-namespace:DirectorPrompt.Localization"
              xmlns:components="clr-namespace:DirectorPrompt.Views.Components">
     <StackPanel x:Name="RootPanel">
-        <TextBlock Text="{Binding [State.Attribute.Phases], Source={x:Static loc:Loc.Instance}}"
-                   FontWeight="SemiBold"
-                   Margin="0,12,0,4" />
+        <Grid Margin="0,12,0,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0"
+                       Text="{Binding [State.Attribute.Phases], Source={x:Static loc:Loc.Instance}}"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center" />
+            <ui:Button Grid.Column="1"
+                       Content="{Binding [State.Attribute.AddPhase], Source={x:Static loc:Loc.Instance}}"
+                       Icon="{ui:SymbolIcon Symbol=Add24}"
+                       Appearance="Secondary"
+                       Padding="8,4"
+                       Click="OnAddPhase" />
+        </Grid>
         <TextBlock Text="{Binding [State.Attribute.PhasesHint], Source={x:Static loc:Loc.Instance}}"
                    FontSize="11"
                    Foreground="Gray"
@@ -113,11 +126,5 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
-        <ui:Button Content="{Binding [State.Attribute.AddPhase], Source={x:Static loc:Loc.Instance}}"
-                   Icon="{ui:SymbolIcon Symbol=Add24}"
-                   Appearance="Secondary"
-                   Padding="8,4"
-                   Margin="0,4,0,0"
-                   Click="OnAddPhase" />
     </StackPanel>
 </UserControl>

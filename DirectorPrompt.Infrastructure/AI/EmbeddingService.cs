@@ -36,10 +36,23 @@ public sealed class EmbeddingService
         if (texts.Count == 0)
             return [];
 
-        var generator  = CreateGenerator();
-        var embeddings = await generator.GenerateAsync(texts, cancellationToken: cancellationToken);
+        var generator = CreateGenerator();
+        var result    = new float[texts.Count][];
 
-        return embeddings.Select(e => e.Vector.ToArray()).ToList();
+        const int BATCH_SIZE = 10;
+
+        for (var i = 0; i < texts.Count; i += BATCH_SIZE)
+        {
+            var count = Math.Min(BATCH_SIZE, texts.Count - i);
+            var batch = texts.Skip(i).Take(count).ToArray();
+
+            var embeddings = await generator.GenerateAsync(batch, cancellationToken: cancellationToken);
+
+            for (var j = 0; j < embeddings.Count; j++)
+                result[i + j] = embeddings[j].Vector.ToArray();
+        }
+
+        return result;
     }
 
     private IEmbeddingGenerator<string, Embedding<float>> CreateGenerator()

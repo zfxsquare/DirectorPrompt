@@ -779,10 +779,17 @@
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel Grid.Column="0" Margin="0,0,4,0">
-                                                        <TextBlock
-                                                            Text="{Binding [Character.Category.Name], Source={x:Static loc:Loc.Instance}}"
-                                                            FontWeight="SemiBold"
-                                                            Margin="0,0,0,4" />
+                                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                            <TextBlock
+                                                                Text="{Binding [Character.Category.Name], Source={x:Static loc:Loc.Instance}}"
+                                                                FontWeight="SemiBold" />
+                                                            <TextBlock
+                                                                Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                                Foreground="Gray"
+                                                                FontSize="12"
+                                                                VerticalAlignment="Center"
+                                                                Margin="8,0,0,0" />
+                                                        </StackPanel>
                                                         <ui:TextBox
                                                             Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
                                                             PlaceholderText="{Binding [Character.Category.NamePlaceholder], Source={x:Static loc:Loc.Instance}}" />
@@ -808,10 +815,17 @@
                                                     </StackPanel>
                                                 </Grid>
 
-                                                <TextBlock
-                                                    Text="{Binding [Character.Category.DescriptionLabel], Source={x:Static loc:Loc.Instance}}"
-                                                    FontWeight="SemiBold"
-                                                    Margin="0,0,0,4" />
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                    <TextBlock
+                                                        Text="{Binding [Character.Category.DescriptionLabel], Source={x:Static loc:Loc.Instance}}"
+                                                        FontWeight="SemiBold" />
+                                                    <TextBlock
+                                                        Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                        Foreground="Gray"
+                                                        FontSize="12"
+                                                        VerticalAlignment="Center"
+                                                        Margin="8,0,0,0" />
+                                                </StackPanel>
                                                 <ui:TextBox
                                                     Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
                                                     Margin="0,0,0,16" />
@@ -887,17 +901,31 @@
                                                                             </Grid.ColumnDefinitions>
                                                                             <StackPanel Grid.Column="0"
                                                                                     Margin="0,0,4,0">
-                                                                                <TextBlock
-                                                                                    Text="{Binding [State.Attribute.Identifier], Source={x:Static loc:Loc.Instance}}"
-                                                                                    Margin="0,0,0,4" />
+                                                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                                                    <TextBlock
+                                                                                        Text="{Binding [State.Attribute.Identifier], Source={x:Static loc:Loc.Instance}}" />
+                                                                                    <TextBlock
+                                                                                        Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                                                        Foreground="Gray"
+                                                                                        FontSize="12"
+                                                                                        VerticalAlignment="Center"
+                                                                                        Margin="8,0,0,0" />
+                                                                                </StackPanel>
                                                                                 <ui:TextBox
                                                                                     Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" />
                                                                             </StackPanel>
                                                                             <StackPanel Grid.Column="1"
                                                                                     Margin="4,0,0,0">
-                                                                                <TextBlock
-                                                                                    Text="{Binding [State.Attribute.DisplayName], Source={x:Static loc:Loc.Instance}}"
-                                                                                    Margin="0,0,0,4" />
+                                                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                                                    <TextBlock
+                                                                                        Text="{Binding [State.Attribute.DisplayName], Source={x:Static loc:Loc.Instance}}" />
+                                                                                    <TextBlock
+                                                                                        Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                                                        Foreground="Gray"
+                                                                                        FontSize="12"
+                                                                                        VerticalAlignment="Center"
+                                                                                        Margin="8,0,0,0" />
+                                                                                </StackPanel>
                                                                                 <ui:TextBox
                                                                                     Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}" />
                                                                             </StackPanel>
@@ -909,9 +937,16 @@
                                                                             </Grid.ColumnDefinitions>
                                                                             <StackPanel Grid.Column="0"
                                                                                     Margin="0,0,4,0">
-                                                                                <TextBlock
-                                                                                    Text="{Binding [State.Attribute.ValueType], Source={x:Static loc:Loc.Instance}}"
-                                                                                    Margin="0,0,0,4" />
+                                                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                                                    <TextBlock
+                                                                                        Text="{Binding [State.Attribute.ValueType], Source={x:Static loc:Loc.Instance}}" />
+                                                                                    <TextBlock
+                                                                                        Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                                                        Foreground="Gray"
+                                                                                        FontSize="12"
+                                                                                        VerticalAlignment="Center"
+                                                                                        Margin="8,0,0,0" />
+                                                                                </StackPanel>
                                                                                 <ComboBox
                                                                                     ItemsSource="{Binding ValueTypes, Source={x:Static vm:EnumOptions.Instance}}"
                                                                                     SelectedValue="{Binding ValueType}"
@@ -921,9 +956,16 @@
                                                                             <StackPanel Grid.Column="1"
                                                                                     Margin="4,0,0,0"
                                                                                     Visibility="{Binding IsNumericConfig, Converter={StaticResource BoolToVisibility}}">
-                                                                                <TextBlock
-                                                                                    Text="{Binding [State.Attribute.Driver], Source={x:Static loc:Loc.Instance}}"
-                                                                                    Margin="0,0,0,4" />
+                                                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                                                    <TextBlock
+                                                                                        Text="{Binding [State.Attribute.Driver], Source={x:Static loc:Loc.Instance}}" />
+                                                                                    <TextBlock
+                                                                                        Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                                                        Foreground="Gray"
+                                                                                        FontSize="12"
+                                                                                        VerticalAlignment="Center"
+                                                                                        Margin="8,0,0,0" />
+                                                                                </StackPanel>
                                                                                 <ComboBox
                                                                                     ItemsSource="{Binding Drivers, Source={x:Static vm:EnumOptions.Instance}}"
                                                                                     SelectedValue="{Binding Driver}"
@@ -934,29 +976,57 @@
 
                                                                         <StackPanel Margin="0,8,0,0"
                                                                                 Visibility="{Binding IsNumericConfig, Converter={StaticResource BoolToVisibility}}">
-                                                                            <TextBlock
-                                                                                Text="{Binding [State.Attribute.MinValue], Source={x:Static loc:Loc.Instance}}"
-                                                                                Margin="0,0,0,4" />
+                                                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                                                <TextBlock
+                                                                                    Text="{Binding [State.Attribute.MinValue], Source={x:Static loc:Loc.Instance}}" />
+                                                                                <TextBlock
+                                                                                    Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                                                    Foreground="Gray"
+                                                                                    FontSize="12"
+                                                                                    VerticalAlignment="Center"
+                                                                                    Margin="8,0,0,0" />
+                                                                            </StackPanel>
                                                                             <ui:NumberBox Value="{Binding MinValue}"
                                                                                     Minimum="-999999"
                                                                                     Maximum="999999"
                                                                                     ClearButtonEnabled="True" />
-                                                                            <TextBlock
-                                                                                Text="{Binding [State.Attribute.MaxValue], Source={x:Static loc:Loc.Instance}}"
-                                                                                Margin="0,8,0,4" />
+                                                                            <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                                                                                <TextBlock
+                                                                                    Text="{Binding [State.Attribute.MaxValue], Source={x:Static loc:Loc.Instance}}" />
+                                                                                <TextBlock
+                                                                                    Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                                                    Foreground="Gray"
+                                                                                    FontSize="12"
+                                                                                    VerticalAlignment="Center"
+                                                                                    Margin="8,0,0,0" />
+                                                                            </StackPanel>
                                                                             <ui:NumberBox Value="{Binding MaxValue}"
                                                                                     Minimum="-999999"
                                                                                     Maximum="999999"
                                                                                     ClearButtonEnabled="True" />
-                                                                            <TextBlock
-                                                                                Text="{Binding [State.Attribute.Unit], Source={x:Static loc:Loc.Instance}}"
-                                                                                Margin="0,8,0,4" />
+                                                                            <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                                                                                <TextBlock
+                                                                                    Text="{Binding [State.Attribute.Unit], Source={x:Static loc:Loc.Instance}}" />
+                                                                                <TextBlock
+                                                                                    Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                                                    Foreground="Gray"
+                                                                                    FontSize="12"
+                                                                                    VerticalAlignment="Center"
+                                                                                    Margin="8,0,0,0" />
+                                                                            </StackPanel>
                                                                             <ui:TextBox
                                                                                 Text="{Binding Unit, UpdateSourceTrigger=PropertyChanged}"
                                                                                 PlaceholderText="{Binding [State.Attribute.UnitPlaceholder], Source={x:Static loc:Loc.Instance}}" />
-                                                                            <TextBlock
-                                                                                Text="{Binding [State.Attribute.ChangeRules], Source={x:Static loc:Loc.Instance}}"
-                                                                                Margin="0,8,0,4" />
+                                                                            <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                                                                                <TextBlock
+                                                                                    Text="{Binding [State.Attribute.ChangeRules], Source={x:Static loc:Loc.Instance}}" />
+                                                                                <TextBlock
+                                                                                    Text="{Binding [Common.ParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                                                    Foreground="Gray"
+                                                                                    FontSize="12"
+                                                                                    VerticalAlignment="Center"
+                                                                                    Margin="8,0,0,0" />
+                                                                            </StackPanel>
                                                                             <ui:TextBox
                                                                                 Text="{Binding ChangeRules, UpdateSourceTrigger=PropertyChanged}"
                                                                                 AcceptsReturn="True"
@@ -981,9 +1051,16 @@
                                                                             <ui:TextBox
                                                                                 Text="{Binding Options, UpdateSourceTrigger=PropertyChanged}"
                                                                                 PlaceholderText="{Binding [State.Attribute.OptionsPlaceholder], Source={x:Static loc:Loc.Instance}}" />
-                                                                            <TextBlock
-                                                                                Text="{Binding [State.Attribute.Trigger], Source={x:Static loc:Loc.Instance}}"
-                                                                                Margin="0,8,0,4" />
+                                                                            <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                                                                                <TextBlock
+                                                                                    Text="{Binding [State.Attribute.Trigger], Source={x:Static loc:Loc.Instance}}" />
+                                                                                <TextBlock
+                                                                                    Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                                                                    Foreground="Gray"
+                                                                                    FontSize="12"
+                                                                                    VerticalAlignment="Center"
+                                                                                    Margin="8,0,0,0" />
+                                                                            </StackPanel>
                                                                             <ComboBox
                                                                                 ItemsSource="{Binding SystemTriggers, Source={x:Static vm:EnumOptions.Instance}}"
                                                                                 SelectedValue="{Binding Trigger}"
@@ -1148,26 +1225,58 @@
                                        FontSize="20"
                                        FontWeight="SemiBold"
                                        Margin="0,0,0,16" />
-                            <TextBlock Text="{Binding [Memory.RecallTopK], Source={x:Static loc:Loc.Instance}}"
-                                       FontWeight="SemiBold" Margin="0,0,0,4" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="{Binding [Memory.RecallTopK], Source={x:Static loc:Loc.Instance}}"
+                                           FontWeight="SemiBold" />
+                                <TextBlock
+                                    Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                    Foreground="Gray"
+                                    FontSize="12"
+                                    VerticalAlignment="Center"
+                                    Margin="8,0,0,0" />
+                            </StackPanel>
                             <ui:NumberBox Value="{Binding Memory.RecallTopK}"
                                           Minimum="1"
                                           Maximum="100"
                                           Margin="0,0,0,12" />
-                            <TextBlock Text="{Binding [Memory.TokenBudget], Source={x:Static loc:Loc.Instance}}"
-                                       FontWeight="SemiBold" Margin="0,0,0,4" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="{Binding [Memory.TokenBudget], Source={x:Static loc:Loc.Instance}}"
+                                           FontWeight="SemiBold" />
+                                <TextBlock
+                                    Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                    Foreground="Gray"
+                                    FontSize="12"
+                                    VerticalAlignment="Center"
+                                    Margin="8,0,0,0" />
+                            </StackPanel>
                             <ui:NumberBox Value="{Binding Memory.TokenBudget}"
                                           Minimum="100"
                                           Maximum="10000"
                                           Margin="0,0,0,12" />
-                            <TextBlock Text="{Binding [Memory.MinRelevance], Source={x:Static loc:Loc.Instance}}"
-                                       FontWeight="SemiBold" Margin="0,0,0,4" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="{Binding [Memory.MinRelevance], Source={x:Static loc:Loc.Instance}}"
+                                           FontWeight="SemiBold" />
+                                <TextBlock
+                                    Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                    Foreground="Gray"
+                                    FontSize="12"
+                                    VerticalAlignment="Center"
+                                    Margin="8,0,0,0" />
+                            </StackPanel>
                             <ui:NumberBox Value="{Binding Memory.MinRelevance}"
                                           Minimum="0"
                                           Maximum="1"
                                           Margin="0,0,0,12" />
-                            <TextBlock Text="{Binding [Memory.TimeDecayLambda], Source={x:Static loc:Loc.Instance}}"
-                                       FontWeight="SemiBold" Margin="0,0,0,4" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="{Binding [Memory.TimeDecayLambda], Source={x:Static loc:Loc.Instance}}"
+                                           FontWeight="SemiBold" />
+                                <TextBlock
+                                    Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                    Foreground="Gray"
+                                    FontSize="12"
+                                    VerticalAlignment="Center"
+                                    Margin="8,0,0,0" />
+                            </StackPanel>
                             <ui:NumberBox Value="{Binding Memory.TimeDecayLambda}"
                                           Minimum="0"
                                           Maximum="1" />
@@ -1180,23 +1289,47 @@
                                 FontSize="20"
                                 FontWeight="SemiBold"
                                 Margin="0,0,0,16" />
-                            <TextBlock
-                                Text="{Binding [Knowledge.Retrieval.SemanticTopK], Source={x:Static loc:Loc.Instance}}"
-                                FontWeight="SemiBold" Margin="0,0,0,4" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock
+                                    Text="{Binding [Knowledge.Retrieval.SemanticTopK], Source={x:Static loc:Loc.Instance}}"
+                                    FontWeight="SemiBold" />
+                                <TextBlock
+                                    Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                    Foreground="Gray"
+                                    FontSize="12"
+                                    VerticalAlignment="Center"
+                                    Margin="8,0,0,0" />
+                            </StackPanel>
                             <ui:NumberBox Value="{Binding Knowledge.SemanticTopK}"
                                           Minimum="1"
                                           Maximum="100"
                                           Margin="0,0,0,12" />
-                            <TextBlock
-                                Text="{Binding [Knowledge.Retrieval.TokenBudget], Source={x:Static loc:Loc.Instance}}"
-                                FontWeight="SemiBold" Margin="0,0,0,4" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock
+                                    Text="{Binding [Knowledge.Retrieval.TokenBudget], Source={x:Static loc:Loc.Instance}}"
+                                    FontWeight="SemiBold" />
+                                <TextBlock
+                                    Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                    Foreground="Gray"
+                                    FontSize="12"
+                                    VerticalAlignment="Center"
+                                    Margin="8,0,0,0" />
+                            </StackPanel>
                             <ui:NumberBox Value="{Binding Knowledge.TokenBudget}"
                                           Minimum="100"
                                           Maximum="10000"
                                           Margin="0,0,0,12" />
-                            <TextBlock
-                                Text="{Binding [Knowledge.Retrieval.MinRelevance], Source={x:Static loc:Loc.Instance}}"
-                                FontWeight="SemiBold" Margin="0,0,0,4" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock
+                                    Text="{Binding [Knowledge.Retrieval.MinRelevance], Source={x:Static loc:Loc.Instance}}"
+                                    FontWeight="SemiBold" />
+                                <TextBlock
+                                    Text="{Binding [Common.NotParticipatesInRetrieval], Source={x:Static loc:Loc.Instance}}"
+                                    Foreground="Gray"
+                                    FontSize="12"
+                                    VerticalAlignment="Center"
+                                    Margin="8,0,0,0" />
+                            </StackPanel>
                             <ui:NumberBox Value="{Binding Knowledge.MinRelevance}"
                                           Minimum="0"
                                           Maximum="1" />

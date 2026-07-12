@@ -49,6 +49,12 @@ public partial class MainWindow : FluentWindow
             _ = viewModel.RollbackLastRoundCommand.ExecuteAsync(null);
     }
 
+    private void OnCopyEntry(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: DialogEntryViewModel entry })
+            Clipboard.SetText(entry.Content);
+    }
+
     private void OnEditEntry(object sender, RoutedEventArgs e)
     {
         if (sender is MenuItem { Tag: DialogEntryViewModel entry })

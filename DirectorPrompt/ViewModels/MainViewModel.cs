@@ -67,9 +67,6 @@ public sealed partial class MainViewModel
     [ObservableProperty]
     public partial bool IsSessionSidebarExpanded { get; set; } = true;
 
-    [ObservableProperty]
-    public partial bool IsRightSidebarExpanded { get; set; } = true;
-
     public bool IsProjectSelected => CurrentProject is not null;
 
     public bool IsNotProcessing => !IsProcessing;
@@ -440,10 +437,6 @@ public sealed partial class MainViewModel
     [RelayCommand]
     private void ToggleSessionSidebar() =>
         IsSessionSidebarExpanded = !IsSessionSidebarExpanded;
-
-    [RelayCommand]
-    private void ToggleRightSidebar() =>
-        IsRightSidebarExpanded = !IsRightSidebarExpanded;
 
     [RelayCommand]
     private void OpenSettings()
